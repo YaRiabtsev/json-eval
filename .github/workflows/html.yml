@@ -1,0 +1,70 @@
+name: Deploy Docs and Coverage
+
+on:
+  push:
+    branches: [ "master" ]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v3
+
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz lcov
+
+      - uses: MarkusJx/googletest-installer@v1.1
+
+      - name: Generate Doxygen
+        run: doxygen Doxyfile
+
+      - name: Build with coverage
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=ON ..
+          cmake --build .
+
+      - name: Run tests and generate coverage report
+        run: |
+          cd build
+          ctest
+          lcov --capture --directory . --output-file coverage.info --rc lcov_branch_coverage=1 --ignore-errors gcov
+          lcov --remove coverage.info '/usr/*' '*/tests/*' --output-file coverage_filtered.info
+          genhtml coverage_filtered.info -t "JSON eval" --demangle-cpp --output-directory ../cov
+
+      - name: Clean build
+        run: rm -rf build/
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
