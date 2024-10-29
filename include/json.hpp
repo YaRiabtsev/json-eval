@@ -51,7 +51,7 @@ namespace json_lib {
  * }
  * ```
  * Instead of writing `obj[obj.public_arr[2]]`, you can use
- * `obj.public_arr[2][obj]` or even `obj.public_arr[2].obj`, which can be more
+ * `obj.public_arr[2][obj]`, which can be more
  * concise, albeit less intuitive.
  *
  * **Default:** `false`
@@ -75,7 +75,7 @@ inline bool enable_symmetric_indexing = false;
  */
 inline bool enable_negative_indexing = false;
 
-enum class json_type {
+enum class json_type : int {
     null_json,
     boolean_json,
     integer_json,
@@ -83,7 +83,7 @@ enum class json_type {
     string_json,
     array_json,
     object_json,
-    // raw_json
+    custom_json
 };
 
 std::string json_type_to_string(json_type type);
@@ -93,20 +93,6 @@ public:
     virtual ~json() = default;
     [[nodiscard]] virtual json_type type() const;
     /**
-     * @brief Checks if the JSON element is consistently represented in a single
-     * line.
-     *
-     * This method returns `true` if the JSON element is intended to be
-     * displayed inline without additional formatting, such as indentation or
-     * line breaks. Examples of inline elements include integers, strings, and
-     * empty arrays.
-     *
-     * @return `true` if the element is constantly represented in one line,
-     * otherwise `false`.
-     */
-    virtual bool is_inline() const;
-
-    /**
      * @brief Prevents infinite loops by marking objects during recursive JSON
      * processing.
      *
@@ -115,23 +101,31 @@ public:
      * operations, this function enables detection of repeated references to
      * halt processing if a loop is detected.
      */
-    virtual void touch() { }
-
+    virtual void touch();
+    virtual bool empty() const;
     /**
-     * @brief Checks if the JSON object is empty, with no nested elements or
-     * child items.
+     * @brief Specifies if the JSON element is consistently represented in a
+     * compact, single-line format.
      *
-     * For `json_array` or `json_object` types, this method checks whether they
-     * contain any nested elements by evaluating `size() == 0`. For other JSON
-     * types, such as `json_integer`, which contain only a single, non-nested
-     * value, this method returns `true`.
+     * This method returns `true` if the JSON element is always displayed in a
+     * compact, single-line format, regardless of formatting options like
+     * `is_pretty` or `indent_level`. Compact elements include simple types,
+     * such as integers or strings, and empty structures, like empty arrays or
+     * objects, which do not require additional formatting.
      *
-     * @return `true` if the JSON object is empty or non-nested, otherwise
-     * `false`.
+     * When `compact()` returns `false`, the JSON element may support multi-line
+     * formatting with indentation and line breaks, particularly for complex or
+     * nested structures.
+     *
+     * @return `true` if the JSON element is consistently represented in a
+     * single-line, compact format; `false` if multi-line or structured
+     * formatting may apply.
      */
-    bool is_empty() const;
-    std::string to_string(bool is_pretty = false) const;
-    virtual std::string to_string(size_t indent_level, bool is_pretty) const;
+    virtual bool compact() const;
+    virtual std::string to_string() const;
+    virtual std::string formatted_string(bool is_pretty) const;
+    virtual std::string
+    indented_string(size_t indent_level, bool is_pretty) const;
     [[nodiscard]] virtual std::shared_ptr<json>
     by(const std::shared_ptr<json>& item) const;
 };
@@ -140,13 +134,8 @@ class json_boolean final : public json {
 public:
     explicit json_boolean(bool value);
     [[nodiscard]] json_type type() const override;
-    bool is_inline() const override;
-
-    void touch() override { }
-
-    std::string to_string(size_t indent_level, bool is_pretty) const override;
-    [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
-    ) const override;
+    std::string
+    indented_string(size_t indent_level, bool is_pretty) const override;
 
 private:
     bool value;
@@ -156,11 +145,8 @@ class json_integer final : public json {
 public:
     explicit json_integer(int value);
     [[nodiscard]] json_type type() const override;
-    bool is_inline() const override;
-
-    void touch() override { }
-
-    std::string to_string(size_t indent_level, bool is_pretty) const override;
+    std::string
+    indented_string(size_t indent_level, bool is_pretty) const override;
     [[nodiscard]] int as_index() const;
     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
     ) const override;
@@ -174,13 +160,8 @@ public:
     explicit json_real(float value);
     explicit json_real(const std::string& str_value);
     [[nodiscard]] json_type type() const override;
-    bool is_inline() const override;
-
-    void touch() override { }
-
-    std::string to_string(size_t indent_level, bool is_pretty) const override;
-    [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
-    ) const override;
+    std::string
+    indented_string(size_t indent_level, bool is_pretty) const override;
 
 private:
     float value;
@@ -191,11 +172,8 @@ class json_string final : public json {
 public:
     explicit json_string(std::string value);
     [[nodiscard]] json_type type() const override;
-    bool is_inline() const override;
-
-    void touch() override { }
-
-    std::string to_string(size_t indent_level, bool is_pretty) const override;
+    std::string
+    indented_string(size_t indent_level, bool is_pretty) const override;
     [[nodiscard]] std::string as_key() const;
     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
     ) const override;
@@ -204,18 +182,19 @@ private:
     std::string value;
 };
 
-class json_array : public json {
+class json_array final : public json {
 public:
     explicit json_array(const std::vector<std::shared_ptr<json>>& arr = {});
     [[nodiscard]] json_type type() const override;
-    bool is_inline() const override;
     void touch() override;
-    std::string to_string(size_t indent_level, bool is_pretty) const override;
+    bool empty() const override;
+    bool compact() const override;
+    std::string
+    indented_string(size_t indent_level, bool is_pretty) const override;
     [[nodiscard]] size_t size() const;
+    [[nodiscard]] std::shared_ptr<json> at(int index) const;
     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
     ) const override;
-    [[nodiscard]] std::shared_ptr<json> at(int index) const;
-    // void emplace_back(const std::shared_ptr<json>& element);
 
 private:
     bool looped { false };
@@ -234,16 +213,16 @@ public:
         = {}
     );
     [[nodiscard]] json_type type() const override;
-    bool is_inline() const override;
     void touch() override;
-    std::string to_string(size_t indent_level, bool is_pretty) const override;
+    bool empty() const override;
+    bool compact() const override;
+    std::string
+    indented_string(size_t indent_level, bool is_pretty) const override;
     [[nodiscard]] size_t size() const;
     [[nodiscard]] std::vector<std::string> get_keys();
+    [[nodiscard]] std::shared_ptr<json> at(const std::string& key) const;
     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
     ) const override;
-    [[nodiscard]] std::shared_ptr<json> at(const std::string& key) const;
-    // void
-    // emplace_back(const std::string& key, const std::shared_ptr<json>& value);
 
 private:
     bool looped { false };
@@ -257,22 +236,6 @@ private:
         size_t nested_level, bool is_pretty
     );
 };
-
-// class raw_json final : public json_array {
-// public:
-//     [[nodiscard]] json_type type() const override;
-//     bool is_inline() const override;
-//     void touch() override;
-//     std::string to_string(size_t indent_level, bool is_pretty) const
-//     override;
-//     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
-//     ) const override;
-//
-// private:
-//     bool looped { false };
-//     bool touched { false };
-//     std::vector<std::shared_ptr<json>> list;
-// };
 
 template <typename Collection>
 concept Iterable = requires(Collection c) {
@@ -305,7 +268,7 @@ std::string format_container(
 
     for (auto it = elements.begin(); it != elements.end(); ++it) {
         if (it != elements.begin()) {
-            result += ",";
+            result += ',';
             result += is_pretty ? "\n" : " ";
         }
         if (is_pretty) {
@@ -322,8 +285,8 @@ std::string format_container(
 }
 
 std::invalid_argument throw_message(
-    const std::shared_ptr<const json_lib::json>& obj1,
-    const std::shared_ptr<const json_lib::json>& obj2,
+    const std::shared_ptr<const json>& obj1,
+    const std::shared_ptr<const json>& obj2,
     std::source_location location = std::source_location::current()
 );
 }

@@ -29,20 +29,20 @@
 
 #include "json.hpp"
 
+#include <functional>
+#include <variant>
+
+namespace parser_lib {
+
 class parser {
 public:
     explicit parser(std::string& buffer);
     explicit parser(const std::stringstream& ss);
-    explicit parser(std::ifstream& input_stream);
+    explicit parser(std::ifstream& is);
     explicit parser(const std::filesystem::path& path);
 
     void completely_parse_json(
         std::shared_ptr<json_lib::json>& result, bool is_dynamic = false
-    );
-
-    void parse_evaluate_json(
-        std::shared_ptr<json_lib::json>& root,
-        std::shared_ptr<json_lib::json>& result
     );
 
 private:
@@ -51,27 +51,86 @@ private:
     int pos { -1 };
     int line { -1 };
 
+    size_t get_pos() const;
     void read_line();
     void next();
     bool valid() const;
+    bool check_ahead(char expected) const;
     char peek() const;
     char get();
 
-    void skip_whitespace();
-    bool is_enumeration();
+    void nonessential();
+    bool separator(char val = ',');
     std::string parse_keyword();
     std::string parse_string();
     std::tuple<std::string, bool> parse_number();
 
-    void parse_array(std::shared_ptr<json_lib::json>& result, bool is_dynamic);
-    void parse_object(std::shared_ptr<json_lib::json>& result, bool is_dynamic);
+    void parse_array_item(
+        std::vector<std::shared_ptr<json_lib::json>>& children, bool is_dynamic
+    );
+    void parse_set_item(
+        std::vector<std::shared_ptr<json_lib::json>>& children, bool is_dynamic
+    );
+    void parse_object_item(
+        std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>&
+            children,
+        bool is_dynamic
+    );
+
+    template <typename Container, typename ParseElement>
+    Container
+    parse_collection(bool is_dynamic, char halt, ParseElement parse_element);
+
+    bool parse_tail(std::shared_ptr<json_lib::json>& result);
     void parse_json(std::shared_ptr<json_lib::json>& result, bool is_dynamic);
-    void parse_path(std::vector<std::shared_ptr<json_lib::json>>& keys);
+    bool parse_accessor(std::shared_ptr<json_lib::json>& acc);
 
     std::runtime_error throw_message(
         const std::string& message,
         std::source_location location = std::source_location::current()
     ) const;
 };
+
+template <typename Container, typename ParseElement>
+Container parser::parse_collection(
+    const bool is_dynamic, const char halt, ParseElement parse_element
+) {
+    Container children;
+    nonessential();
+    bool closed = true;
+    while (valid() && peek() != halt) {
+        std::invoke(parse_element, *this, children, is_dynamic);
+        closed = !separator();
+    }
+    if (!closed) {
+        throw throw_message("expected one more item in enumerator");
+    }
+    if (!valid() || peek() != halt) {
+        throw throw_message("enumerator-object is not closed");
+    }
+    next();
+    return children;
+}
+
+class raw_json final : public json_lib::json {
+public:
+    explicit raw_json(const std::shared_ptr<json>& head);
+    explicit raw_json(const std::string& name);
+    [[nodiscard]] json_lib::json_type type() const override;
+    void touch() override;
+    std::string
+    indented_string(size_t indent_level, bool is_pretty) const override;
+    [[nodiscard]] size_t size() const;
+    void to_function(const std::vector<std::shared_ptr<json>>& args);
+    void emplace_back(const std::shared_ptr<json>& item);
+
+private:
+    bool looped { false };
+    bool touched { false };
+    bool is_function { false };
+    std::variant<std::shared_ptr<json>, std::string> head;
+    std::vector<std::shared_ptr<json>> tail {};
+};
+}
 
 #endif // PARSER_HPP

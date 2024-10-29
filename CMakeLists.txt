@@ -34,8 +34,11 @@ include_directories(include)
 
 add_executable(json_eval
         src/main.cpp
+
         src/json.cpp
+
         src/parser.cpp
+        src/raw_json.cpp
 )
 
 if (BUILD_TESTS)
@@ -50,12 +53,16 @@ if (BUILD_TESTS)
             tests/json_tests.cpp
             tests/parse_tests.cpp
             tests/path_tests.cpp
-            src/json.cpp
             src/parser.cpp
+
+
+            src/json.cpp
+
+            src/parser.cpp
+            src/raw_json.cpp
     )
 
-    target_link_libraries(
-            unit_tests
+    target_link_libraries(unit_tests
             GTest::GTest
             GTest::Main
             Threads::Threads

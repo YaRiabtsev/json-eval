@@ -27,7 +27,7 @@
 #include <cassert>
 #include <utility>
 
-std::runtime_error parser::throw_message(
+std::runtime_error parser_lib::parser::throw_message(
     const std::string& message, const std::source_location location
 ) const {
     std::ostringstream oss;
@@ -52,22 +52,22 @@ std::runtime_error parser::throw_message(
     return std::runtime_error(oss.str());
 }
 
-parser::parser(std::string& buffer)
+parser_lib::parser::parser(std::string& buffer)
     : buffer(std::move(buffer))
     , pos(0)
     , line(0) { }
 
-// parser::parser(const std::stringstream& ss)
-//     : buffer(ss.str())
-//     , pos(0)
-//     , line(0) { }
-//
-// parser::parser(std::ifstream& input_stream)
-//     : ifs(move(input_stream)) {
-//     read_line();
-// }
+parser_lib::parser::parser(const std::stringstream& ss)
+    : buffer(ss.str())
+    , pos(0)
+    , line(0) { }
 
-parser::parser(const std::filesystem::path& path) {
+parser_lib::parser::parser(std::ifstream& is)
+    : ifs(move(is)) {
+    read_line();
+}
+
+parser_lib::parser::parser(const std::filesystem::path& path) {
     ifs.open(path);
     if (!ifs.is_open()) {
         throw std::invalid_argument(
@@ -77,98 +77,96 @@ parser::parser(const std::filesystem::path& path) {
     read_line();
 }
 
-void parser::read_line() {
+void parser_lib::parser::read_line() {
     ++line;
-    if (!ifs.is_open()) {
-        pos = -1;
-        buffer.clear();
-        return;
-    }
+    buffer.clear();
+    pos = -1;
     if (ifs.eof()) {
         ifs.close();
-        buffer.clear();
-        pos = -1;
-    } else {
-        std::getline(ifs, buffer);
-        if (line > 0) {
-            buffer = "\n" + buffer;
-        }
-        pos = 0;
     }
+    if (!ifs.is_open()) {
+        return;
+    }
+    std::getline(ifs, buffer);
+    buffer += '\n';
+    pos = 0;
 }
 
-void parser::next() {
+size_t parser_lib::parser::get_pos() const {
+    assert(pos >= 0 && "stream is not empty");
+    return static_cast<size_t>(pos);
+}
+
+void parser_lib::parser::next() {
     assert(pos >= 0 && "stream is not empty");
     ++pos;
-    if (const auto index = static_cast<size_t>(pos); index >= buffer.size()) {
+    if (get_pos() >= buffer.size()) {
         read_line();
     }
 }
 
-bool parser::valid() const {
-    if (pos < 0) {
+bool parser_lib::parser::valid() const {
+    return pos >= 0 && get_pos() < buffer.size();
+}
+
+bool parser_lib::parser::check_ahead(const char expected) const {
+    if (!valid()) {
         return false;
     }
-    const auto index = static_cast<size_t>(pos);
-    return index < buffer.size();
+    const size_t next_index = get_pos() + 1;
+    if (next_index >= buffer.size()) {
+        return false;
+    }
+    return buffer[next_index] == expected;
 }
 
-char parser::peek() const {
-    assert(valid() && "stream and position are valid");
-    const auto index = static_cast<size_t>(pos);
-    return buffer[index];
-}
+char parser_lib::parser::peek() const { return buffer[get_pos()]; }
 
-char parser::get() {
+char parser_lib::parser::get() {
     const char peek_char = peek();
     next();
     return peek_char;
 }
 
-void parser::skip_whitespace() {
+void parser_lib::parser::nonessential() {
     while (valid() && std::isspace(peek())) {
         next();
     }
-    if (valid() && peek() == '/') {
-        next();
-        if (valid() && peek() == '/') {
-            while (valid() && peek() != '\n') {
-                get();
-            }
-            skip_whitespace();
-        } else {
-            throw throw_message("invalid json");
-        }
+    if (valid() && peek() == '/' && check_ahead('/')) {
+        while (valid() && get() != '\n')
+            ;
+        nonessential();
     }
 }
 
-bool parser::is_enumeration() {
-    if (valid() && peek() == ',') {
+bool parser_lib::parser::separator(const char val) {
+    nonessential();
+    if (valid() && peek() == val) {
         next();
+        nonessential();
         return true;
     }
     return false;
 }
 
-std::string parser::parse_keyword() {
-    std::string keyword;
+std::string parser_lib::parser::parse_keyword() {
     assert(
-        valid() && std::isalpha(peek())
+        valid() && (std::isalpha(peek()) || peek() == '_')
         && "expected keyword starting with a letter"
     );
+    std::string keyword;
     do {
         keyword += get();
     } while (valid() && (std::isalnum(peek()) || peek() == '_'));
     return keyword;
 }
 
-std::string parser::parse_string() {
-    skip_whitespace();
+std::string parser_lib::parser::parse_string() {
     assert(valid() && peek() == '\"' && "expected opening quote");
     next();
     std::string value;
     bool is_backslash = false;
-    while (valid()) {
+    do {
         const char current = peek();
         if (is_backslash) {
             switch (current) {
@@ -225,7 +223,7 @@ std::string parser::parse_string() {
             value += current;
         }
         next();
-    }
+    } while (valid());
     if (!valid() || peek() != '\"') {
         throw throw_message("invalid JSON string: Missing closing quote");
     }
@@ -233,8 +231,8 @@ std::string parser::parse_string() {
     return value;
 }
 
-std::tuple<std::string, bool> parser::parse_number() {
-    skip_whitespace();
+std::tuple<std::string, bool> parser_lib::parser::parse_number() {
+    nonessential();
     std::string number;
     bool is_float = false;
     if (valid() && peek() == '-') {
@@ -285,80 +283,133 @@ std::tuple<std::string, bool> parser::parse_number() {
     return { number, is_float };
 }
 
-void parser::parse_array(
-    std::shared_ptr<json_lib::json>& result, const bool is_dynamic
+void parser_lib::parser::parse_array_item(
+    std::vector<std::shared_ptr<json_lib::json>>& children,
+    const bool is_dynamic
 ) {
-    skip_whitespace();
-    assert(valid() && peek() == '[' && "array starts with opening bracket `[`");
-    next();
-    std::vector<std::shared_ptr<json_lib::json>> children;
-    skip_whitespace();
-    bool closed = (valid() && peek() == ']');
-    while (valid() && !closed) {
-        std::shared_ptr<json_lib::json> child;
-        parse_json(child, is_dynamic);
-        children.emplace_back(child);
-        skip_whitespace();
-        closed = !is_enumeration();
-    }
-    if (!valid() || peek() != ']') {
-        throw throw_message("invalid json array");
-    }
-    next();
-    result = std::make_shared<json_lib::json_array>(children);
+    std::shared_ptr<json_lib::json> child;
+    parse_json(child, is_dynamic);
+    children.emplace_back(child);
 }
 
-void parser::parse_object(
+void parser_lib::parser::parse_object_item(
+    std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>&
+        children,
+    const bool is_dynamic
+) {
+    if (!valid() || peek() != '\"') {
+        throw throw_message("expected key as a string");
+    }
+    std::string key = parse_string();
+    if (!separator(':')) {
+        throw throw_message("expected key-value separator for json object");
+    }
+    std::shared_ptr<json_lib::json> value;
+    parse_json(value, is_dynamic);
+    children.emplace_back(key, value);
+}
+
+void parser_lib::parser::completely_parse_json(
     std::shared_ptr<json_lib::json>& result, const bool is_dynamic
 ) {
-    skip_whitespace();
-    assert(valid() && peek() == '{' && "object starts with opening brace `{`");
-    next();
-    std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>
-        children;
-    skip_whitespace();
-    bool closed = (valid() && peek() == '}');
-    while (valid() && !closed) {
-        // if is_dynamic == false:
-        skip_whitespace();
-        if (!valid() || peek() != '\"') {
-            throw throw_message("expected key as a string");
-        }
-        std::string key = parse_string();
-        // todo: if (children.contains(key)) {
-        //     throw throw_message("key overusing in the same json object");
-        // }
-        skip_whitespace();
-        if (!valid() || peek() != ':') {
-            throw throw_message("expected key-value separator for json object");
-        }
+    parse_json(result, is_dynamic);
+    nonessential();
+    if (result == nullptr) {
+        throw throw_message("json is empty");
+    }
+    if (valid()) {
+        throw throw_message("invalid json");
+    }
+}
+
+void parser_lib::parser::parse_set_item(
+    std::vector<std::shared_ptr<json_lib::json>>& children, bool
+) {
+    std::shared_ptr<json_lib::json> child = std::make_shared<raw_json>("@");
+    if (!parse_tail(child)) {
+        throw throw_message("expected path");
+    }
+    children.emplace_back(child);
+}
+
+bool parser_lib::parser::parse_accessor(std::shared_ptr<json_lib::json>& acc) {
+    nonessential();
+    if (!valid()) {
+        return false;
+    }
+    if (peek() == '.') {
         next();
-        std::shared_ptr<json_lib::json> child;
-        parse_json(child, is_dynamic);
-        children.emplace_back(key, child);
-        skip_whitespace();
-        closed = !is_enumeration();
+        if (!std::isalpha(peek()) && peek() != '_') {
+            throw throw_message("invalid const accessor");
+        }
+        const std::string keyword = parse_keyword();
+        acc = std::make_shared<json_lib::json_string>(keyword);
+    } else if (peek() == '[') {
+        next();
+        auto children
+            = parse_collection<std::vector<std::shared_ptr<json_lib::json>>>(
+                true, ']', &parser::parse_array_item
+            );
+        if (children.size() == 1) {
+            acc = children[0];
+        } else {
+            for (auto& child : children) {
+                const auto raw_child = std::make_shared<raw_json>("@");
+                raw_child->emplace_back(child);
+                child = raw_child;
+            }
+            acc = std::make_shared<json_lib::json_array>(children);
+        }
+    } else if (peek() == '{') {
+        next();
+        auto children
+            = parse_collection<std::vector<std::shared_ptr<json_lib::json>>>(
+                true, '}', &parser::parse_set_item
+            );
+        acc = std::make_shared<json_lib::json_array>(children);
+    } else if (peek() == '(') {
+        // auto children
+        //     = parse_collection<std::vector<std::shared_ptr<json_lib::json>>>(
+        //         true, ')', &parser::parse_array_item
+        //     );
+        // acc.to
+    } else {
+        return false;
     }
-    if (!valid() || peek() != '}') {
-        throw throw_message("invalid json array");
-    }
-    next();
-    result = std::make_shared<json_lib::json_object>(children);
+    return true;
 }
 
-// void parser::parse_path(std::vector<std::shared_ptr<json_lib::json>>& keys) {
-//
-// }
+bool parser_lib::parser::parse_tail(std::shared_ptr<json_lib::json>& result) {
+    std::shared_ptr<raw_json> raw_result;
+    if (result->type() == json_lib::json_type::custom_json) {
+        raw_result = std::dynamic_pointer_cast<raw_json>(result);
+    } else {
+        raw_result = std::make_shared<raw_json>(result);
+    }
+    bool is_const = true;
+    for (std::shared_ptr<json_lib::json> next; parse_accessor(next);) {
+        raw_result->emplace_back(next);
+        is_const = false;
+    }
+    if (!is_const) {
+        result = raw_result;
+    }
+    return !is_const;
+}
 
-void parser::parse_json(
+void parser_lib::parser::parse_json(
     std::shared_ptr<json_lib::json>& result, const bool is_dynamic
 ) {
-    skip_whitespace();
+    nonessential();
     if (!valid()) {
         return;
     }
-    // std::vector<std::shared_ptr<json_lib::json>> keys;
-    if (std::isalpha(peek())) {
+    if (is_dynamic && (peek() == '@' || peek() == '#')) {
+        std::string key;
+        key += peek();
+        result = std::make_shared<raw_json>(key);
+        next();
+    } else if (std::isalpha(peek()) || peek() == '_') {
         if (const std::string keyword = parse_keyword(); keyword == "true") {
             result = std::make_shared<json_lib::json_boolean>(true);
         } else if (keyword == "false") {
@@ -366,18 +417,7 @@ void parser::parse_json(
         } else if (keyword == "null") {
             result = std::make_shared<json_lib::json>();
         } else if (is_dynamic) {
-            // todo: parse_path(path_obj) -> [key / idx];
-            // base object is required
-            // could be loop
-            // todo: json += emplace_back() for json_array and _object
-            // skip_whitespace();
-            // if (valid() && peek() == '(') {
-            // todo: parse_function()
-            // } else {
-            // keys.emplace_back(
-            // std::make_shared<json_lib::json_string>(keyword)
-            // );
-            // }
+            result = std::make_shared<raw_json>(keyword);
         } else {
             throw throw_message("invalid json");
         }
@@ -392,32 +432,33 @@ void parser::parse_json(
     } else if (peek() == '\"') {
         result = std::make_shared<json_lib::json_string>(parse_string());
     } else if (peek() == '[') {
-        parse_array(result, is_dynamic);
+        next();
+        auto children
+            = parse_collection<std::vector<std::shared_ptr<json_lib::json>>>(
+                is_dynamic, ']', &parser::parse_array_item
+            );
+        result = std::make_shared<json_lib::json_array>(children);
     } else if (peek() == '{') {
-        parse_object(result, is_dynamic);
+        next();
+        auto children = parse_collection<std::vector<
+            std::pair<std::string, std::shared_ptr<json_lib::json>>>>(
+            is_dynamic, '}', &parser::parse_object_item
+        );
+        result = std::make_shared<json_lib::json_object>(children);
+    } else if (is_dynamic && peek() == '(') {
+        next();
+        std::shared_ptr<json_lib::json> nested;
+        parse_json(nested, is_dynamic);
+        nonessential();
+        if (!valid() || peek() != ')') {
+            throw throw_message("invalid json");
+        }
+        result = std::make_shared<raw_json>(nested);
+        next();
     } else {
         throw throw_message("invalid json");
     }
     if (is_dynamic) {
-        // todo: if peek == ']' -> parse_path(path_obj)
-        // result is a constant object,
-        // that is an nested object by path = path_obj,
-        // where the base obj is current result
-
-        // while (!keys.empty()) {
-        // }
-    }
-}
-
-void parser::completely_parse_json(
-    std::shared_ptr<json_lib::json>& result, const bool is_dynamic
-) {
-    parse_json(result, is_dynamic);
-    skip_whitespace();
-    if (valid()) {
-        throw throw_message("invalid json");
-    }
-    if (result == nullptr) {
-        result = std::make_shared<json_lib::json>();
+        parse_tail(result);
     }
 }

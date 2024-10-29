@@ -61,10 +61,10 @@ TEST(JsonTest, NullJsonTest) {
     const auto obj1 = std::make_shared<json_lib::json>();
     EXPECT_EQ(obj1->type(), json_lib::json_type::null_json);
     EXPECT_EQ(obj1->to_string(), "null");
-    EXPECT_EQ(obj1->to_string(true), "null");
-    EXPECT_EQ(obj1->to_string(false), "null");
-    EXPECT_EQ(obj1->to_string(0, true), "null");
-    EXPECT_EQ(obj1->to_string(0, false), "null");
+    EXPECT_EQ(obj1->formatted_string(true), "null");
+    EXPECT_EQ(obj1->formatted_string(false), "null");
+    EXPECT_EQ(obj1->formatted_string(true), "null");
+    EXPECT_EQ(obj1->to_string(), "null");
     const auto obj2 = std::make_shared<json_lib::json>();
     EXPECT_EQ(obj2->type(), json_lib::json_type::null_json);
     EXPECT_EQ(obj2->to_string(), "null");
@@ -83,10 +83,10 @@ TEST(JsonTest, BooleanJsonTest) {
         = std::make_shared<json_lib::json_boolean>(false);
     EXPECT_EQ(obj_cast_false->type(), json_lib::json_type::boolean_json);
     EXPECT_EQ(obj_cast_false->to_string(), "false");
-    EXPECT_EQ(obj_true->to_string(2, true), "true");
-    EXPECT_EQ(obj_false->to_string(2, true), "false");
-    EXPECT_EQ(obj_true->to_string(0, true), "true");
-    EXPECT_EQ(obj_false->to_string(0, true), "false");
+    EXPECT_EQ(obj_true->indented_string(2, true), "true");
+    EXPECT_EQ(obj_false->indented_string(2, true), "false");
+    EXPECT_EQ(obj_true->formatted_string(true), "true");
+    EXPECT_EQ(obj_false->formatted_string(true), "false");
 }
 
 TEST(JsonTest, IntegerJsonTest) {
@@ -124,8 +124,8 @@ TEST(JsonTest, IntegerJsonTest) {
     EXPECT_EQ(obj5->to_string(), "73");
     const auto num5 = std::dynamic_pointer_cast<json_lib::json_integer>(obj5);
     EXPECT_EQ(num5->as_index(), 73);
-    EXPECT_EQ(obj4->to_string(0, true), "-47");
-    EXPECT_EQ(obj5->to_string(2, true), "73");
+    EXPECT_EQ(obj4->formatted_string(true), "-47");
+    EXPECT_EQ(obj5->indented_string(2, true), "73");
     const std::shared_ptr<json_lib::json> obj6
         = std::make_shared<json_lib::json_integer>(-2147483000);
     EXPECT_EQ(obj6->type(), json_lib::json_type::integer_json);
@@ -176,8 +176,8 @@ TEST(JsonTest, RealJsonTest) {
         );
     EXPECT_EQ(obj7->type(), json_lib::json_type::real_json);
     EXPECT_EQ(obj7->to_string(), "-340282346638528859811704183484516925440.0");
-    EXPECT_EQ(obj4->to_string(0, true), "-273.149994");
-    EXPECT_EQ(obj5->to_string(2, true), "36.599998");
+    EXPECT_EQ(obj4->formatted_string(true), "-273.149994");
+    EXPECT_EQ(obj5->indented_string(2, true), "36.599998");
     const std::shared_ptr<json_lib::json> obj8
         = std::make_shared<json_lib::json_real>(
             std::numeric_limits<float>::denorm_min()
@@ -226,8 +226,8 @@ TEST(JsonTest, RealJsonTestWithString) {
     EXPECT_EQ(
         obj7->to_string(), "-340282346638528859811704183484516925440.000000"
     );
-    EXPECT_EQ(obj4->to_string(0, true), "-273.15");
-    EXPECT_EQ(obj5->to_string(2, true), "36.6");
+    EXPECT_EQ(obj4->formatted_string(true), "-273.15");
+    EXPECT_EQ(obj5->indented_string(2, true), "36.6");
     const std::shared_ptr<json_lib::json> obj8
         = std::make_shared<json_lib::json_real>(
             std::to_string(std::numeric_limits<float>::denorm_min())
@@ -337,13 +337,13 @@ TEST(JsonTest, StringJsonTest) {
         );
     EXPECT_EQ(obj6->type(), json_lib::json_type::string_json);
     EXPECT_EQ(obj6->to_string(), "\"Non-ASCII: üñîçødé, 中文, العربية\"");
-    EXPECT_EQ(obj1->to_string(0, true), "\"Hello, world!\"");
+    EXPECT_EQ(obj1->formatted_string(true), "\"Hello, world!\"");
     EXPECT_EQ(
-        obj2->to_string(2, true),
+        obj2->indented_string(2, true),
         "\"Line 1\\nLine 2\\tTabbed\\rCarriage\\bBackspace\\fFormFeed\""
     );
     EXPECT_EQ(
-        obj3->to_string(4, true),
+        obj3->indented_string(4, true),
         "\"Special !@#$%^&*()_+-=[]{};:'\\\"\\\\|,<.>/?`~\""
     );
     const std::shared_ptr<json_lib::json_string> str_obj1
@@ -360,8 +360,8 @@ TEST(JsonTest, ArrayJsonTest) {
     const auto obj1 = std::make_shared<json_lib::json_array>();
     EXPECT_EQ(obj1->type(), json_lib::json_type::array_json);
     EXPECT_EQ(obj1->size(), 0);
-    EXPECT_EQ(obj1->to_string(0, false), "[]");
-    EXPECT_EQ(obj1->to_string(0, true), "[]");
+    EXPECT_EQ(obj1->to_string(), "[]");
+    EXPECT_EQ(obj1->formatted_string(true), "[]");
     std::vector<std::shared_ptr<json_lib::json>> values
         = { std::make_shared<json_lib::json_integer>(1),
             std::make_shared<json_lib::json_real>(1.f),
@@ -374,8 +374,8 @@ TEST(JsonTest, ArrayJsonTest) {
     EXPECT_EQ(obj2->at(1)->to_string(), "1.0");
     EXPECT_EQ(obj2->at(2)->to_string(), "true");
     EXPECT_EQ(obj2->at(3)->to_string(), "\"test\"");
-    EXPECT_EQ(obj2->to_string(0, false), "[1, 1.0, true, \"test\"]");
-    EXPECT_EQ(obj2->to_string(1, true), "[1, 1.0, true, \"test\"]");
+    EXPECT_EQ(obj2->to_string(), "[1, 1.0, true, \"test\"]");
+    EXPECT_EQ(obj2->indented_string(1, true), "[1, 1.0, true, \"test\"]");
     json_lib::enable_negative_indexing = true;
     EXPECT_EQ(obj2->at(-1)->to_string(), "\"test\"");
     EXPECT_EQ(obj2->at(-2)->to_string(), "true");
@@ -395,16 +395,16 @@ TEST(JsonTest, ArrayJsonTest) {
         = { std::make_shared<json_lib::json_array>(values),
             std::make_shared<json_lib::json_integer>(42) };
     const auto obj3 = std::make_shared<json_lib::json_array>(nested_values);
-    EXPECT_EQ(obj3->to_string(0, false), "[[1, 1.0, true, \"test\"], 42]");
+    EXPECT_EQ(obj3->to_string(), "[[1, 1.0, true, \"test\"], 42]");
     EXPECT_EQ(
-        obj3->to_string(1, true),
+        obj3->indented_string(1, true),
         "[\n\t\t[1, 1.0, true, \"test\"],\n\t\t42\n\t]"
     );
     EXPECT_EQ(obj3->size(), 2);
     const auto nested_array = obj3->at(0);
     EXPECT_EQ(nested_array->type(), json_lib::json_type::array_json);
     EXPECT_EQ(nested_array->to_string(), "[1, 1.0, true, \"test\"]");
-    EXPECT_EQ(nested_array->to_string(1, true), "[1, 1.0, true, \"test\"]");
+    EXPECT_EQ(nested_array->indented_string(1, true), "[1, 1.0, true, \"test\"]");
     json_lib::enable_negative_indexing = enable_negative_indexing_copy;
 }
 
@@ -412,8 +412,8 @@ TEST(JsonTest, ObjectJsonTest) {
     const auto obj1 = std::make_shared<json_lib::json_object>();
     EXPECT_EQ(obj1->type(), json_lib::json_type::object_json);
     EXPECT_EQ(obj1->size(), 0);
-    EXPECT_EQ(obj1->to_string(0, false), "{}");
-    EXPECT_EQ(obj1->to_string(0, true), "{}");
+    EXPECT_EQ(obj1->to_string(), "{}");
+    EXPECT_EQ(obj1->formatted_string(true), "{}");
     std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>> values
         = { { "integer", std::make_shared<json_lib::json_integer>(42) },
             { "boolean", std::make_shared<json_lib::json_boolean>(true) },
@@ -426,11 +426,11 @@ TEST(JsonTest, ObjectJsonTest) {
     EXPECT_EQ(obj2->at("boolean")->to_string(), "true");
     EXPECT_EQ(obj2->at("string")->to_string(), "\"Hello World\"");
     EXPECT_EQ(
-        obj2->to_string(0, false),
+        obj2->to_string(),
         "{\"integer\": 42, \"boolean\": true, \"string\": \"Hello World\"}"
     );
     EXPECT_EQ(
-        obj2->to_string(1, true),
+        obj2->indented_string(1, true),
         "{\n\t\t\"integer\": 42,\n\t\t\"boolean\": true,\n\t\t\"string\": "
         "\"Hello World\"\n\t}"
     );
@@ -447,7 +447,7 @@ TEST(JsonTest, ObjectJsonTest) {
         = { { "number", std::make_shared<json_lib::json_integer>(10) } };
     const auto simple_number_obj
         = std::make_shared<json_lib::json_object>(simple_number_object);
-    EXPECT_EQ(simple_number_obj->to_string(0, true), "{\"number\": 10}");
+    EXPECT_EQ(simple_number_obj->formatted_string(true), "{\"number\": 10}");
     std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>
         simple_string_object
         = { { "text",
@@ -455,14 +455,14 @@ TEST(JsonTest, ObjectJsonTest) {
     const auto simple_string_obj
         = std::make_shared<json_lib::json_object>(simple_string_object);
     EXPECT_EQ(
-        simple_string_obj->to_string(0, true), "{\"text\": \"Sample Text\"}"
+        simple_string_obj->formatted_string(true), "{\"text\": \"Sample Text\"}"
     );
     std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>
         simple_null_object
         = { { "nullValue", std::make_shared<json_lib::json>() } };
     const auto simple_null_obj
         = std::make_shared<json_lib::json_object>(simple_null_object);
-    EXPECT_EQ(simple_null_obj->to_string(0, true), "{\"nullValue\": null}");
+    EXPECT_EQ(simple_null_obj->formatted_string(true), "{\"nullValue\": null}");
     std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>
         simple_array_object
         = { { "array",
@@ -475,7 +475,7 @@ TEST(JsonTest, ObjectJsonTest) {
     const auto simple_array_obj
         = std::make_shared<json_lib::json_object>(simple_array_object);
     EXPECT_EQ(
-        simple_array_obj->to_string(0, true), "{\n\t\"array\": [1, 2, 3]\n}"
+        simple_array_obj->formatted_string(true), "{\n\t\"array\": [1, 2, 3]\n}"
     );
     std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>
         simple_nested_object
@@ -489,7 +489,7 @@ TEST(JsonTest, ObjectJsonTest) {
     const auto simple_nested_obj
         = std::make_shared<json_lib::json_object>(simple_nested_object);
     EXPECT_EQ(
-        simple_nested_obj->to_string(0, true),
+        simple_nested_obj->formatted_string(true),
         "{\n\t\"nested\": {\"key\": \"value\"}\n}"
     );
     std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>
@@ -504,12 +504,12 @@ TEST(JsonTest, ObjectJsonTest) {
               ) } };
     const auto obj3 = std::make_shared<json_lib::json_object>(nested_values);
     EXPECT_EQ(
-        obj3->to_string(0, false),
+        obj3->to_string(),
         "{\"nested_object\": {\"integer\": 42, \"boolean\": true, \"string\": "
         "\"Hello World\"}, \"array\": [1, \"Item\"]}"
     );
     EXPECT_EQ(
-        obj3->to_string(1, true),
+        obj3->indented_string(1, true),
         "{\n\t\t\"nested_object\": {\n\t\t\t\"integer\": "
         "42,\n\t\t\t\"boolean\": true,\n\t\t\t\"string\": \"Hello "
         "World\"\n\t\t},\n\t\t\"array\": [1, \"Item\"]\n\t}"
@@ -582,102 +582,3 @@ TEST(JsonTest, JsonByJsonTest) {
     EXPECT_EQ(null_res, nullptr);
     json_lib::enable_symmetric_indexing = enable_symmetric_indexing_copy;
 }
-
-// TEST(JsonTest, JsonEmplaceBackTest) {
-//     const bool enable_symmetric_indexing_copy
-//         = json_lib::enable_symmetric_indexing;
-//     auto json_arr = std::make_shared<json_lib::json_array>();
-//     auto json_obj = std::make_shared<json_lib::json_object>();
-//
-//     json_arr->emplace_back(std::make_shared<json_lib::json_boolean>(true));
-//     json_arr->emplace_back(std::make_shared<json_lib::json_integer>(42));
-//     json_arr->emplace_back(std::make_shared<json_lib::json_real>(3.14f));
-//     json_arr->emplace_back(std::make_shared<json_lib::json_string>("Test
-//     String"
-//     ));
-//     json_arr->emplace_back(std::make_shared<json_lib::json_array>());
-//     json_arr->emplace_back(std::make_shared<json_lib::json_object>());
-//
-//     EXPECT_EQ(json_arr->size(), 6);
-//     EXPECT_EQ(json_arr->type(), json_lib::json_type::array_json);
-//     EXPECT_EQ(
-//         json_arr->to_string(0, false),
-//         "[true, 42, 3.14, \"Test String\", [], {}]"
-//     );
-//
-//     json_obj->emplace_back(
-//         "bool_key", std::make_shared<json_lib::json_boolean>(true)
-//     );
-//     EXPECT_THROW(
-//         json_obj->emplace_back(
-//             "bool_key", std::make_shared<json_lib::json_boolean>(false)
-//         ),
-//         std::invalid_argument
-//     );
-//     json_obj->emplace_back(
-//         "int_key", std::make_shared<json_lib::json_integer>(42)
-//     );
-//     json_obj->emplace_back(
-//         "real_key", std::make_shared<json_lib::json_real>(3.14f)
-//     );
-//     json_obj->emplace_back(
-//         "string_key", std::make_shared<json_lib::json_string>("Test String")
-//     );
-//     json_obj->emplace_back(
-//         "array_key", std::make_shared<json_lib::json_array>()
-//     );
-//     json_obj->emplace_back(
-//         "object_key", std::make_shared<json_lib::json_object>()
-//     );
-//
-//     EXPECT_EQ(json_obj->size(), 6);
-//     EXPECT_EQ(json_obj->type(), json_lib::json_type::object_json);
-//     EXPECT_EQ(
-//         json_obj->to_string(0, false),
-//         "{\"bool_key\": true, \"int_key\": 42, \"real_key\": 3.14, "
-//         "\"string_key\": \"Test String\", \"array_key\": [], \"object_key\":
-//         "
-//         "{}}"
-//     );
-//
-//     json_arr->emplace_back(json_arr);
-//     EXPECT_THROW(json_arr->to_string(0, false), std::runtime_error);
-//
-//     json_obj->emplace_back("self_ref", json_obj);
-//     EXPECT_THROW(json_obj->to_string(0, false), std::runtime_error);
-//
-//     std::shared_ptr<json_lib::json> res;
-//     EXPECT_EQ(json_arr->at(0)->type(), json_lib::json_type::boolean_json);
-//     EXPECT_THROW(res = json_arr->at(-1), std::out_of_range);
-//     EXPECT_EQ(res, nullptr);
-//
-//     EXPECT_EQ(
-//         json_obj->at("int_key")->type(), json_lib::json_type::integer_json
-//     );
-//     EXPECT_THROW(res = json_obj->at("missing_key"), std::out_of_range);
-//     EXPECT_EQ(res, nullptr);
-//
-//     EXPECT_THROW(res = json_arr->by(json_arr->at(2)), std::invalid_argument);
-//     EXPECT_THROW(
-//         res =
-//         json_obj->by(std::make_shared<json_lib::json_string>("invalid")),
-//         std::out_of_range
-//     );
-//     EXPECT_EQ(res, nullptr);
-//
-//     json_lib::enable_symmetric_indexing = true;
-//     EXPECT_EQ(
-//         std::make_shared<json_lib::json_string>("bool_key")
-//             ->by(json_obj)
-//             ->to_string(),
-//         "true"
-//     );
-//     EXPECT_THROW(
-//         res = std::make_shared<json_lib::json_string>("bool_key")
-//                   ->by(json_obj)
-//                   ->by(json_arr),
-//         std::invalid_argument
-//     );
-//     EXPECT_EQ(res, nullptr);
-//     json_lib::enable_symmetric_indexing = enable_symmetric_indexing_copy;
-// }

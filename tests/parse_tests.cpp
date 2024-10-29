@@ -27,28 +27,28 @@
 TEST(ParserTest, ParseConstKeywordJsonTest) {
     std::shared_ptr<json_lib::json> result;
     std::string buffer = "null";
-    parser p(buffer);
+    parser_lib::parser p(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::null_json);
 
     buffer = "true";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::boolean_json);
 
     buffer = "false";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::boolean_json);
 
     buffer = "true, null";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result->type(), json_lib::json_type::boolean_json);
     std::shared_ptr<json_lib::json> invalid_result;
 
     buffer = "trulse";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 }
@@ -56,43 +56,46 @@ TEST(ParserTest, ParseConstKeywordJsonTest) {
 TEST(ParserTest, ParseWhiteSpaceJsonTest) {
     std::shared_ptr<json_lib::json> result;
     std::string buffer = "    ";
-    parser p(buffer);
-    p.completely_parse_json(result);
-    EXPECT_EQ(result->type(), json_lib::json_type::null_json);
+    parser_lib::parser p(buffer);
+    EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
+    EXPECT_EQ(result, nullptr);
 
     buffer = "\n\n\t\t\t\n    \n\r";
-    p = parser(buffer);
-    p.completely_parse_json(result);
-    EXPECT_EQ(result->type(), json_lib::json_type::null_json);
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
+    EXPECT_EQ(result, nullptr);
+
     buffer = R"(                  // illegal comment 0
 
-                    // illegal comment 1
-                        // // illegal comment 2
-         //////// // illegal comment 3
-       //*//*/*//* // illegal comment 4
-                )";
-    p = parser(buffer);
-    p.completely_parse_json(result);
-    EXPECT_EQ(result->type(), json_lib::json_type::null_json);
+                     // illegal comment 1
+                         // // illegal comment 2
+          //////// // illegal comment 3
+        //*//*/*//* // illegal comment 4
+                 )";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
+    EXPECT_EQ(result, nullptr);
+
     buffer = R"(
 
-                // illegal comment 0
+                  // illegal comment 0
 
-                    // illegal comment 1
-                        // // illegal comment 2
-                null//////// // illegal comment 3
-       //*//*/*//* // illegal comment 4
-                )";
-    p = parser(buffer);
+                      // illegal comment 1
+                          // // illegal comment 2
+                  null//////// // illegal comment 3
+         //*//*/*//* // illegal comment 4
+                  )";
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::null_json);
+
     buffer = R"(// illegal comment 0
-                    // illegal comment 1
-                        // // illegal comment 2
-                true//////// // illegal comment 3
-       //*//*/*//* // illegal comment 4
-                )";
-    p = parser(buffer);
+                      // illegal comment 1
+                          // // illegal comment 2
+                  true//////// // illegal comment 3
+         //*//*/*//* // illegal comment 4
+                  )";
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::boolean_json);
 }
@@ -100,106 +103,106 @@ TEST(ParserTest, ParseWhiteSpaceJsonTest) {
 TEST(ParserTest, ParseNumberJsonTest) {
     std::shared_ptr<json_lib::json> result;
     std::string buffer = "42";
-    parser p(buffer);
+    parser_lib::parser p(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::integer_json);
     EXPECT_EQ(result->to_string(), "42");
 
     buffer = "0";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::integer_json);
     EXPECT_EQ(result->to_string(), "0");
 
     buffer = "0.0";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "0.0");
 
     buffer = "-42";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::integer_json);
     EXPECT_EQ(result->to_string(), "-42");
 
     buffer = "987654321";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::integer_json);
     EXPECT_EQ(result->to_string(), "987654321");
 
     buffer = "3.14159";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "3.14159");
 
     buffer = "-3.14159";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "-3.14159");
 
     buffer = "0.007";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "0.007");
 
     buffer = "1.23e-4";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "1.23e-4");
 
     buffer = "1.23e+4";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "1.23e+4");
 
     buffer = "2e10";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "2e10");
 
     buffer = "-5e-2";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "-5e-2");
 
     buffer = "4.56xxxinvalidsuffix";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result->type(), json_lib::json_type::real_json);
     EXPECT_EQ(result->to_string(), "4.56");
-    std::shared_ptr<json_lib::json> invalid_result;
 
+    std::shared_ptr<json_lib::json> invalid_result;
     buffer = "0123";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 
     buffer = "3.";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 
     buffer = "1.23e";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 
     buffer = "-";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 
     buffer = "+";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 }
@@ -207,7 +210,7 @@ TEST(ParserTest, ParseNumberJsonTest) {
 TEST(ParserTest, ParseStringJsonTest) {
     std::shared_ptr<json_lib::json> result;
     std::string buffer = "\"The quick brown fox jumps over the lazy dog\"";
-    parser p(buffer);
+    parser_lib::parser p(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(
@@ -218,7 +221,7 @@ TEST(ParserTest, ParseStringJsonTest) {
              "thinking about good examples for the test-cases instead of... "
              "instead of thinking of what else I could do while listening to "
              "music.\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(
@@ -230,7 +233,7 @@ TEST(ParserTest, ParseStringJsonTest) {
 
     buffer = "\"I can't think about that right now. If I do, I'll go crazy. "
              "I'll think about that tomorrow.\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(
@@ -242,7 +245,7 @@ TEST(ParserTest, ParseStringJsonTest) {
     buffer
         = "\"EXPECT_EQ(result->to_string(), \\\"EXPECT_EQ(result->to_string(), "
           "\\\\\\\"\\\\\\\");\\\"); isn't it a good test string?\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(
@@ -252,21 +255,21 @@ TEST(ParserTest, ParseStringJsonTest) {
     );
 
     buffer = R"("C:\\Projects\\JSONTest\\result.json")";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(
         result->to_string(), "\"C:\\\\Projects\\\\JSONTest\\\\result.json\""
     );
     buffer = R"("The Unicode character for smiley is \u263A")";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(result->to_string(), "\"The Unicode character for smiley is ☺\"");
 
     buffer = "\"First line\nSecond line\rBackspace\b happens here\nTabbed "
              "line:\tTabbed\fEnd of string\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(
@@ -278,7 +281,7 @@ TEST(ParserTest, ParseStringJsonTest) {
     buffer
         = "\"\\/First line\\nSecond line\\rBackspace\\b happens here\\nTabbed "
           "line:\\tTabbed\\fEnd of string\\\"\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(
@@ -288,41 +291,41 @@ TEST(ParserTest, ParseStringJsonTest) {
     );
 
     buffer = "\"I hate Emoji! 😊🔥\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(result->to_string(), "\"I hate Emoji! 😊🔥\"");
 
     buffer = "\"Symbols like @#$%^&*()_+-=...\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(result->to_string(), "\"Symbols like @#$%^&*()_+-=...\"");
 
     buffer = "\"\"";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     p.completely_parse_json(result);
     EXPECT_EQ(result->type(), json_lib::json_type::string_json);
     EXPECT_EQ(result->to_string(), "\"\"");
     std::shared_ptr<json_lib::json> invalid_result;
 
     buffer = "\"It seems like I've missed something...";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 
     buffer = R"("Invalid\x01ControlCharacter")";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 
     buffer = R"("An invalid escape: \q")";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 
     buffer = R"("Unicode escape gone wrong: \u12")";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(invalid_result), std::runtime_error);
     EXPECT_EQ(invalid_result, nullptr);
 }
@@ -330,32 +333,32 @@ TEST(ParserTest, ParseStringJsonTest) {
 TEST(ParserTest, ParseArrayJsonTest) {
     std::shared_ptr<json_lib::json> result;
     std::string buffer = "[";
-    parser p(buffer);
+    parser_lib::parser p(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = "[1, 2, 3, 4, 5, 6,]";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = "[1, 2, 3, 4, 5, 6, [7, 8, 9, 10]";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = "{\"arr\":[1, 2, 3, 4, 5, 6, ]}";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = "{\"arr\" : [1, 2, 3, 4, 5, 6}";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 }
@@ -363,42 +366,42 @@ TEST(ParserTest, ParseArrayJsonTest) {
 TEST(ParserTest, ParseObjectJsonTest) {
     std::shared_ptr<json_lib::json> result;
     std::string buffer = "{";
-    parser p(buffer);
+    parser_lib::parser p(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = "{1, 2, 3, 4, 5, 6, 7, 8, 9, 10";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = R"({"key1", "key2", "key3"})";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = R"({"key1" : 1, "key2" : 2, "key3" : 3)";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = R"({"key1" : 1, "key2" : , "key3" : 3})";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = R"({"key1" : 1, "key2" : "key3" : 3})";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = R"({"key1" : 1, "key2" : {"key3" : 3})";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 
     buffer = R"({"key1" : 1, "key2" : [{"key3" : 3]})";
-    p = parser(buffer);
+    p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result), std::runtime_error);
     EXPECT_EQ(result, nullptr);
 }
@@ -406,32 +409,130 @@ TEST(ParserTest, ParseObjectJsonTest) {
 TEST(ParserTest, ParseFileJsonTest) {
     std::shared_ptr<json_lib::json> result;
     std::filesystem::path path = "test_data/de.json";
-    parser p(path);
+    parser_lib::parser p(path);
     EXPECT_NO_THROW(p.completely_parse_json(result));
     EXPECT_EQ(result->type(), json_lib::json_type::object_json);
 
     // todo: integer --> int64
     // path = "test_data/lshw.json";
-    // p = parser(path);
+    // p = parser_lib::parser(path);
     // EXPECT_NO_THROW(p.completely_parse_json(result));
     // EXPECT_EQ(result->type(), json_lib::json_type::object_json);
 
     path = "test_data/troma_imdb.json";
-    p = parser(path);
+    p = parser_lib::parser(path);
     EXPECT_NO_THROW(p.completely_parse_json(result));
     EXPECT_EQ(result->type(), json_lib::json_type::object_json);
     std::shared_ptr<json_lib::json> pretty_result;
 
     path = "test_data/pretty_troma.json";
-    p = parser(path);
+    p = parser_lib::parser(path);
     EXPECT_NO_THROW(p.completely_parse_json(pretty_result));
     EXPECT_EQ(pretty_result->type(), json_lib::json_type::object_json);
     EXPECT_EQ(result->to_string(), pretty_result->to_string());
 
     path = "test_data/preety_troma.json";
-    EXPECT_THROW(p = parser(path), std::invalid_argument);
+    EXPECT_THROW(p = parser_lib::parser(path), std::invalid_argument);
 }
 
-TEST(ParserTest, ParseInvalidJsonTest) { }
+TEST(ParserTest, ParseDynamicJsonTest) {
+    std::shared_ptr<json_lib::json> result;
+    std::string buffer = R"(#.a.b.c.d)";
+    parser_lib::parser p(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#[\"a\"][\"b\"][\"c\"][\"d\"]");
 
-TEST(ParserTest, ParseDynamicJsonTest) { }
+    buffer = R"(key.a.b.c)";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "key[\"a\"][\"b\"][\"c\"]");
+
+    buffer = R"(#["a"]["b"]["c"]["some key"])";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#[\"a\"][\"b\"][\"c\"][\"some key\"]");
+
+    buffer = R"(#[1][2][3][4])";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#[1][2][3][4]");
+
+    buffer = R"(#[1]["a"].b["c"][2])";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#[1][\"a\"][\"b\"][\"c\"][2]");
+
+    buffer = R"(#["a", "b", "c", 1, 2, 3, 4])";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(
+        result->to_string(),
+        "#[@[\"a\"], @[\"b\"], @[\"c\"], @[1], @[2], @[3], @[4]]"
+    );
+
+    buffer = R"(#{.a, .b.c, [1].b, [1]["key"]})";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(
+        result->to_string(),
+        "#[@[\"a\"], @[\"b\"][\"c\"], @[1][\"b\"], @[1][\"key\"]]"
+    );
+
+    buffer = R"((key.a[key.b[(key.c)]]))";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "key[\"a\"][key[\"b\"][key[\"c\"]]]");
+
+    buffer = "#.73";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#");
+
+    buffer = R"(#{a, b, c})";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#");
+
+    buffer = R"(#{"a", "b", "c"})";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#");
+
+    buffer = R"(#{1, 2, 3, 4})";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#");
+
+    buffer = R"(#{.a, , .c, .d})";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#");
+
+    buffer = R"(#[(1])";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
+    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->to_string(), "#");
+
+    std::shared_ptr<json_lib::json> invalid_result;
+    buffer = "#.a";
+    p = parser_lib::parser(buffer);
+    EXPECT_THROW(
+        p.completely_parse_json(invalid_result, false), std::runtime_error
+    );
+    EXPECT_EQ(invalid_result, nullptr);
+
+}

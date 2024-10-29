@@ -34,21 +34,15 @@ int main(const int argc, char* argv[]) {
 
     std::shared_ptr<json_lib::json> base_json;
     const std::filesystem::path input_file(argv[1]);
-    parser prs(input_file);
+    parser_lib::parser prs(input_file);
     prs.completely_parse_json(base_json);
 
-    // parse path with base_json
+    std::shared_ptr<json_lib::json> raw_json;
+    std::string expr = argv[2];
+    prs = parser_lib::parser(expr);
+    prs.completely_parse_json(raw_json, true);
 
-    std::cout << base_json->to_string() << std::endl;
-    // int main() {
-    //     std::shared_ptr<json_lib::json> res =
-    //     std::make_shared<json_lib::json>(); std::cout << res << ' ' <<
-    //     res->to_string() << std::endl; std::shared_ptr<json_lib::json> arr
-    //         = std::make_shared<json_lib::json_array>();
-    //     std::cout << arr << ' ' << arr->to_string() << std::endl;
-    //     *res = arr.get();
-    //     std::cout << res << ' ' << res->to_string() << arr << ' '
-    //               << arr->to_string() << std::endl;
+    std::cout << raw_json->to_string() << std::endl;
 
     return 0;
 }
