@@ -44,7 +44,7 @@ public:
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
     std::string tail_to_string() const;
-
+    void touch() override;
     json_lib::json_type type() const override;
     virtual json_reference_type reference_type() const;
 
@@ -56,6 +56,8 @@ public:
     ref_head_type get_head_type() const;
 
 private:
+    bool looped { false };
+    bool touched { false };
     ref_head_type head_type;
     std::shared_ptr<json> head = nullptr;
     std::deque<std::shared_ptr<json>> tail {};
@@ -67,13 +69,14 @@ protected:
 
 class json_set final : public json_reference {
 public:
-    explicit
-    json_set(const std::vector<std::shared_ptr<json_reference>>& elements);
+    explicit json_set(
+        const std::vector<std::shared_ptr<json_reference>>& elements
+    );
 
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
     json_reference_type reference_type() const override;
-
+    void touch() override;
     void emplace_back(const std::shared_ptr<json>& item) override;
     void set_local_head(const std::shared_ptr<json>& local) override;
 

@@ -26,23 +26,72 @@
 
 #include "parser.hpp"
 
-int main(const int argc, char* argv[]) {
-    if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <json-file> <json-path>\n";
-        return 1;
-    }
+//
+// int main(const int argc, char* argv[]) {
+//     if (argc != 3) {
+//         std::cerr << "Usage: " << argv[0] << " <json-file> <json-path>\n";
+//         return 1;
+//     }
+//
+//     std::shared_ptr<json_lib::json> base_json;
+//     const std::filesystem::path input_file(argv[1]);
+//     parser_lib::parser prs(input_file);
+//     prs.completely_parse_json(base_json);
+//
+//     std::shared_ptr<json_lib::json> raw_json;
+//     std::string expr = argv[2];
+//     prs = parser_lib::parser(expr);
+//     prs.completely_parse_json(raw_json, true);
+//
+//     std::cout << raw_json->to_string() << std::endl;
+//
+//     return 0;
+// }
+int main() {
+    std::shared_ptr<json_lib::json> result;
+    std::string buffer = "{}";
+    parser_lib::parser p(buffer);
+    // R"({"a":1, "b":2, "c":3}{.b, .c, .a})";
+    // std::cout << 1 << std::endl;
+    // {
+    //
+    // buffer = R"($.key[0]["key1"][1,2]{.key2, .key3}{.a.b.c[0], .a.b.c[1],
+    // .a.b.c[2]})"; p = parser_lib::parser(buffer);
+    // p.completely_parse_json(result, true);
+    // std::cout << result->to_string() << std::endl << std::endl;
 
-    std::shared_ptr<json_lib::json> base_json;
-    const std::filesystem::path input_file(argv[1]);
-    parser_lib::parser prs(input_file);
-    prs.completely_parse_json(base_json);
-
-    std::shared_ptr<json_lib::json> raw_json;
-    std::string expr = argv[2];
-    prs = parser_lib::parser(expr);
-    prs.completely_parse_json(raw_json, true);
-
-    std::cout << raw_json->to_string() << std::endl;
+    buffer = R"({"key1":5, "key2":@, "key3":55}.key2.key1)";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    std::cout << result->to_string() << std::endl;
+    //
+    // buffer = R"([fu(), fu(1), fu([1,2,3]), fu({}), fu(@.key, 5),
+    // fu().key.key, a.fu(1,2)1])"; p = parser_lib::parser(buffer);
+    // p.completely_parse_json(result, true);
+    // std::cout << result->to_string() << std::endl;
+    //
+    // buffer = R"($.a.b.c.d)";
+    // p = parser_lib::parser(buffer);
+    // p.completely_parse_json(result, true);
+    // std::cout << result->to_string() << std::endl;
+    // }
+    // std::cout << 2 << std::endl;
+    // {
+    // buffer = R"([17, 314, 51]{[0], [2], [1]})";
+    // p = parser_lib::parser(buffer);
+    // p.completely_parse_json(result, true);
+    // std::cout << result->to_string() << std::endl;
+    //
+    //     buffer = R"({"key" :5}{.key})";
+    //     p = parser_lib::parser(buffer);
+    //     p.completely_parse_json(result, true);
+    //     std::cout << result->to_string() << std::endl;
+    //
+    //     buffer = R"({"key" :5}{["key"]})";
+    //     p = parser_lib::parser(buffer);
+    //     p.completely_parse_json(result, true);
+    //     std::cout << result->to_string() << std::endl;
+    // }
 
     return 0;
 }

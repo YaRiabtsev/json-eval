@@ -404,7 +404,9 @@ TEST(JsonTest, ArrayJsonTest) {
     const auto nested_array = obj3->at(0);
     EXPECT_EQ(nested_array->type(), json_lib::json_type::array_json);
     EXPECT_EQ(nested_array->to_string(), "[1, 1.0, true, \"test\"]");
-    EXPECT_EQ(nested_array->indented_string(1, true), "[1, 1.0, true, \"test\"]");
+    EXPECT_EQ(
+        nested_array->indented_string(1, true), "[1, 1.0, true, \"test\"]"
+    );
     json_lib::enable_negative_indexing = enable_negative_indexing_copy;
 }
 

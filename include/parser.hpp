@@ -24,7 +24,7 @@
 
 #ifndef PARSER_HPP
 #define PARSER_HPP
-#include "custom_json.hpp"
+#include "reference.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -79,7 +79,8 @@ private:
     );
 
     bool parse_accessor(std::shared_ptr<json_lib::json>& accessor);
-    void parse_tail(const std::shared_ptr<reference_lib::json_reference>& result);
+    void parse_tail(const std::shared_ptr<reference_lib::json_reference>& result
+    );
     void parse_reference(std::shared_ptr<json_lib::json>& result);
     void parse_json(std::shared_ptr<json_lib::json>& result, bool dynamic);
 

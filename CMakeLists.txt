@@ -37,7 +37,6 @@ add_executable(json_eval
 
         src/json.cpp
         src/parser.cpp
-
         src/reference.cpp
 )
 
@@ -56,7 +55,6 @@ if (BUILD_TESTS)
 
             src/json.cpp
             src/parser.cpp
-
             src/reference.cpp
     )
 

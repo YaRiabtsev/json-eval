@@ -25,6 +25,7 @@
 #include "parser.hpp"
 
 #include <cassert>
+#include <ranges>
 #include <utility>
 
 std::runtime_error parser_lib::parser::throw_message(
@@ -481,6 +482,12 @@ void parser_lib::parser::parse_json(
                 dynamic, ']', &parser::parse_array_item
             );
         result = std::make_shared<json_lib::json_array>(children);
+        for (const auto& child : children) {
+            if (child->type() == json_lib::json_type::custom_json) {
+                std::dynamic_pointer_cast<reference_lib::json_reference>(child)
+                    ->set_local_head(result);
+            }
+        }
     } else if (peek() == '{') {
         next();
         auto children = parse_collection<std::vector<
@@ -488,6 +495,12 @@ void parser_lib::parser::parse_json(
             dynamic, '}', &parser::parse_object_item
         );
         result = std::make_shared<json_lib::json_object>(children);
+        for (const auto& child : children | std::views::values) {
+            if (child->type() == json_lib::json_type::custom_json) {
+                std::dynamic_pointer_cast<reference_lib::json_reference>(child)
+                    ->set_local_head(result);
+            }
+        }
     } else if (dynamic && peek() == '(') {
         next();
         parse_json(result, dynamic);

@@ -22,7 +22,9 @@
  * SOFTWARE.
  */
 
-#include "../include/custom_json.hpp"
+#include "reference.hpp"
+
+#include <ranges>
 
 reference_lib::json_reference::json_reference(const ref_head_type type)
     : head_type(type) { }
@@ -48,6 +50,9 @@ json_lib::json_type reference_lib::json_reference::type() const {
 std::string reference_lib::json_reference::indented_string(
     const size_t indent_level, const bool pretty
 ) const {
+    if (looped) {
+        throw std::runtime_error("object is looped");
+    }
     std::string result;
     switch (head_type) {
     case ref_head_type::object:
@@ -113,6 +118,26 @@ std::string reference_lib::json_reference::tail_to_string() const {
     return result;
 }
 
+void reference_lib::json_reference::touch() {
+    if (touched) {
+        looped = true;
+        return;
+    }
+    touched = true;
+    if (head_type == ref_head_type::object) {
+        head->touch();
+    }
+    touched = false;
+}
+
+void reference_lib::json_set::touch() {
+    if (get_head_type() == ref_head_type::set) {
+        for (const auto& element : elements) {
+            element->touch();
+        }
+    }
+}
+
 reference_lib::json_reference_type
 reference_lib::json_reference::reference_type() const {
     return json_reference_type::reference_json;
@@ -159,6 +184,7 @@ void reference_lib::json_reference::set_local_head(
         head = local;
         head_type = ref_head_type::object;
         simplify();
+        touch();
     }
 }
 
