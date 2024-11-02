@@ -36,9 +36,9 @@ add_executable(json_eval
         src/main.cpp
 
         src/json.cpp
-
         src/parser.cpp
-        src/raw_json.cpp
+
+        src/reference.cpp
 )
 
 if (BUILD_TESTS)
@@ -53,13 +53,11 @@ if (BUILD_TESTS)
             tests/json_tests.cpp
             tests/parse_tests.cpp
             tests/path_tests.cpp
-            src/parser.cpp
-
 
             src/json.cpp
-
             src/parser.cpp
-            src/raw_json.cpp
+
+            src/reference.cpp
     )
 
     target_link_libraries(unit_tests
@@ -75,7 +73,7 @@ if (BUILD_TESTS)
     if (COVERAGE)
         if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
             message(STATUS "Enabling coverage reporting")
-            target_compile_options(unit_tests PUBLIC --coverage -O0 -g)
+            target_compile_options(unit_tests PUBLIC --coverage -O0)
             target_link_libraries(unit_tests gcov)
         endif ()
     endif ()

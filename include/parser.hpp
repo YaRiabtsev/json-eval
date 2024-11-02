@@ -24,16 +24,13 @@
 
 #ifndef PARSER_HPP
 #define PARSER_HPP
+#include "custom_json.hpp"
+
 #include <filesystem>
 #include <fstream>
-
-#include "json.hpp"
-
 #include <functional>
-#include <variant>
 
 namespace parser_lib {
-
 class parser {
 public:
     explicit parser(std::string& buffer);
@@ -42,7 +39,7 @@ public:
     explicit parser(const std::filesystem::path& path);
 
     void completely_parse_json(
-        std::shared_ptr<json_lib::json>& result, bool is_dynamic = false
+        std::shared_ptr<json_lib::json>& result, bool dynamic = false
     );
 
 private:
@@ -52,38 +49,39 @@ private:
     int line { -1 };
 
     size_t get_pos() const;
-    void read_line();
-    void next();
     bool valid() const;
-    bool check_ahead(char expected) const;
+    void next();
+    void read_line();
     char peek() const;
     char get();
+    bool check_ahead(char expected) const;
+    bool separator(char val = ',');
 
     void nonessential();
-    bool separator(char val = ',');
     std::string parse_keyword();
     std::string parse_string();
     std::tuple<std::string, bool> parse_number();
 
+    template <typename Container, typename ParseElement>
+    Container
+    parse_collection(bool dynamic, char halt, ParseElement parse_element);
     void parse_array_item(
-        std::vector<std::shared_ptr<json_lib::json>>& children, bool is_dynamic
+        std::vector<std::shared_ptr<json_lib::json>>& children, bool dynamic
     );
     void parse_set_item(
-        std::vector<std::shared_ptr<json_lib::json>>& children, bool is_dynamic
+        std::vector<std::shared_ptr<reference_lib::json_reference>>& children,
+        bool dynamic
     );
     void parse_object_item(
         std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>>&
             children,
-        bool is_dynamic
+        bool dynamic
     );
 
-    template <typename Container, typename ParseElement>
-    Container
-    parse_collection(bool is_dynamic, char halt, ParseElement parse_element);
-
-    bool parse_tail(std::shared_ptr<json_lib::json>& result);
-    void parse_json(std::shared_ptr<json_lib::json>& result, bool is_dynamic);
-    bool parse_accessor(std::shared_ptr<json_lib::json>& acc);
+    bool parse_accessor(std::shared_ptr<json_lib::json>& accessor);
+    void parse_tail(const std::shared_ptr<reference_lib::json_reference>& result);
+    void parse_reference(std::shared_ptr<json_lib::json>& result);
+    void parse_json(std::shared_ptr<json_lib::json>& result, bool dynamic);
 
     std::runtime_error throw_message(
         const std::string& message,
@@ -93,13 +91,13 @@ private:
 
 template <typename Container, typename ParseElement>
 Container parser::parse_collection(
-    const bool is_dynamic, const char halt, ParseElement parse_element
+    const bool dynamic, const char halt, ParseElement parse_element
 ) {
     Container children;
     nonessential();
     bool closed = true;
     while (valid() && peek() != halt) {
-        std::invoke(parse_element, *this, children, is_dynamic);
+        std::invoke(parse_element, *this, children, dynamic);
         closed = !separator();
     }
     if (!closed) {
@@ -111,26 +109,6 @@ Container parser::parse_collection(
     next();
     return children;
 }
-
-class raw_json final : public json_lib::json {
-public:
-    explicit raw_json(const std::shared_ptr<json>& head);
-    explicit raw_json(const std::string& name);
-    [[nodiscard]] json_lib::json_type type() const override;
-    void touch() override;
-    std::string
-    indented_string(size_t indent_level, bool is_pretty) const override;
-    [[nodiscard]] size_t size() const;
-    void to_function(const std::vector<std::shared_ptr<json>>& args);
-    void emplace_back(const std::shared_ptr<json>& item);
-
-private:
-    bool looped { false };
-    bool touched { false };
-    bool is_function { false };
-    std::variant<std::shared_ptr<json>, std::string> head;
-    std::vector<std::shared_ptr<json>> tail {};
-};
 }
 
 #endif // PARSER_HPP

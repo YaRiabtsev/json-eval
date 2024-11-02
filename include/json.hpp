@@ -109,7 +109,7 @@ public:
      *
      * This method returns `true` if the JSON element is always displayed in a
      * compact, single-line format, regardless of formatting options like
-     * `is_pretty` or `indent_level`. Compact elements include simple types,
+     * `pretty` or `indent_level`. Compact elements include simple types,
      * such as integers or strings, and empty structures, like empty arrays or
      * objects, which do not require additional formatting.
      *
@@ -123,9 +123,8 @@ public:
      */
     virtual bool compact() const;
     virtual std::string to_string() const;
-    virtual std::string formatted_string(bool is_pretty) const;
-    virtual std::string
-    indented_string(size_t indent_level, bool is_pretty) const;
+    virtual std::string formatted_string(bool pretty) const;
+    virtual std::string indented_string(size_t indent_level, bool pretty) const;
     [[nodiscard]] virtual std::shared_ptr<json>
     by(const std::shared_ptr<json>& item) const;
 };
@@ -135,7 +134,7 @@ public:
     explicit json_boolean(bool value);
     [[nodiscard]] json_type type() const override;
     std::string
-    indented_string(size_t indent_level, bool is_pretty) const override;
+    indented_string(size_t indent_level, bool pretty) const override;
 
 private:
     bool value;
@@ -146,7 +145,7 @@ public:
     explicit json_integer(int value);
     [[nodiscard]] json_type type() const override;
     std::string
-    indented_string(size_t indent_level, bool is_pretty) const override;
+    indented_string(size_t indent_level, bool pretty) const override;
     [[nodiscard]] int as_index() const;
     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
     ) const override;
@@ -161,7 +160,7 @@ public:
     explicit json_real(const std::string& str_value);
     [[nodiscard]] json_type type() const override;
     std::string
-    indented_string(size_t indent_level, bool is_pretty) const override;
+    indented_string(size_t indent_level, bool pretty) const override;
 
 private:
     float value;
@@ -173,7 +172,7 @@ public:
     explicit json_string(std::string value);
     [[nodiscard]] json_type type() const override;
     std::string
-    indented_string(size_t indent_level, bool is_pretty) const override;
+    indented_string(size_t indent_level, bool pretty) const override;
     [[nodiscard]] std::string as_key() const;
     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
     ) const override;
@@ -190,7 +189,7 @@ public:
     bool empty() const override;
     bool compact() const override;
     std::string
-    indented_string(size_t indent_level, bool is_pretty) const override;
+    indented_string(size_t indent_level, bool pretty) const override;
     [[nodiscard]] size_t size() const;
     [[nodiscard]] std::shared_ptr<json> at(int index) const;
     [[nodiscard]] std::shared_ptr<json> by(const std::shared_ptr<json>& item
@@ -202,7 +201,7 @@ private:
     std::vector<std::shared_ptr<json>> list;
 
     static std::string format_item(
-        const std::shared_ptr<json>& item, size_t nested_level, bool is_pretty
+        const std::shared_ptr<json>& item, size_t nested_level, bool pretty
     );
 };
 
@@ -217,7 +216,7 @@ public:
     bool empty() const override;
     bool compact() const override;
     std::string
-    indented_string(size_t indent_level, bool is_pretty) const override;
+    indented_string(size_t indent_level, bool pretty) const override;
     [[nodiscard]] size_t size() const;
     [[nodiscard]] std::vector<std::string> get_keys();
     [[nodiscard]] std::shared_ptr<json> at(const std::string& key) const;
@@ -233,7 +232,7 @@ private:
 
     static std::string format_item(
         const std::pair<std::string, std::shared_ptr<json>>& item,
-        size_t nested_level, bool is_pretty
+        size_t nested_level, bool pretty
     );
 };
 
@@ -245,22 +244,21 @@ concept Iterable = requires(Collection c) {
 
 template <typename Formatter, typename Element>
 concept CallableFormatter
-    = requires(Formatter f, const Element& e, size_t level, bool is_pretty) {
-          { f(e, level, is_pretty) } -> std::convertible_to<std::string>;
+    = requires(Formatter f, const Element& e, size_t level, bool pretty) {
+          { f(e, level, pretty) } -> std::convertible_to<std::string>;
       };
 
 template <Iterable Collection, typename Formatter>
     requires CallableFormatter<Formatter, typename Collection::value_type>
 std::string format_container(
-    const Collection& elements, Formatter lambda, char brackets[2],
-    const size_t indent_level, const bool is_pretty
+    const Collection& elements, Formatter lambda, const size_t indent_level,
+    const bool pretty
 ) {
     std::string result;
-    result += brackets[0];
     std::string indent;
     size_t nested_level = indent_level;
 
-    if (is_pretty) {
+    if (pretty) {
         nested_level++;
         indent = std::string(indent_level, '\t');
         result += "\n";
@@ -269,18 +267,17 @@ std::string format_container(
     for (auto it = elements.begin(); it != elements.end(); ++it) {
         if (it != elements.begin()) {
             result += ',';
-            result += is_pretty ? "\n" : " ";
+            result += pretty ? "\n" : " ";
         }
-        if (is_pretty) {
+        if (pretty) {
             result += indent + '\t';
         }
-        result += lambda(*it, nested_level, is_pretty);
+        result += lambda(*it, nested_level, pretty);
     }
 
-    if (is_pretty) {
+    if (pretty) {
         result += "\n" + indent;
     }
-    result += brackets[1];
     return result;
 }
 

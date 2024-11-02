@@ -211,8 +211,8 @@ std::string json_lib::json::to_string() const {
     return formatted_string(false);
 }
 
-std::string json_lib::json::formatted_string(const bool is_pretty) const {
-    return indented_string(0, is_pretty);
+std::string json_lib::json::formatted_string(const bool pretty) const {
+    return indented_string(0, pretty);
 }
 
 std::string json_lib::json::indented_string(size_t, bool) const {
@@ -276,43 +276,43 @@ std::string json_lib::json_string::indented_string(size_t, bool) const {
 
 std::string json_lib::json_array::format_item(
     const std::shared_ptr<json>& item, const size_t nested_level,
-    const bool is_pretty
+    const bool pretty
 ) {
-    return item->indented_string(nested_level, is_pretty);
+    return item->indented_string(nested_level, pretty);
 }
 
 std::string json_lib::json_array::indented_string(
-    const size_t indent_level, const bool is_pretty
+    const size_t indent_level, const bool pretty
 ) const {
     if (looped) {
         throw std::runtime_error("object is looped");
     }
-    char brackets[2] = { '[', ']' };
-    auto result = format_container(
-        list, format_item, brackets, indent_level, is_pretty && !compact()
-    );
-    return result;
+    return '['
+        + format_container(
+               list, format_item, indent_level, pretty && !compact()
+        )
+        + "]";
 }
 
 std::string json_lib::json_object::format_item(
     const std::pair<std::string, std::shared_ptr<json>>& item,
-    const size_t nested_level, const bool is_pretty
+    const size_t nested_level, const bool pretty
 ) {
     return "\"" + item.first
-        + "\": " + item.second->indented_string(nested_level, is_pretty);
+        + "\": " + item.second->indented_string(nested_level, pretty);
 }
 
 std::string json_lib::json_object::indented_string(
-    const size_t indent_level, const bool is_pretty
+    const size_t indent_level, const bool pretty
 ) const {
     if (looped) {
         throw std::runtime_error("object is looped");
     }
-    char brackets[2] = { '{', '}' };
-    auto result = format_container(
-        data, format_item, brackets, indent_level, is_pretty && !compact()
-    );
-    return result;
+    return '{'
+        + format_container(
+               data, format_item, indent_level, pretty && !compact()
+        )
+        + "}";
 }
 
 std::shared_ptr<json_lib::json>
