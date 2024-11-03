@@ -23,6 +23,7 @@
  */
 
 #include "json.hpp"
+#include "reference.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -54,9 +55,9 @@ std::invalid_argument json_lib::throw_message(
     const std::shared_ptr<const json>& obj2, const std::source_location location
 ) {
     std::ostringstream oss;
-    oss << "[Json-Error] "
-        << "Attempting to evaluate a " << json_type_to_string(obj1->type())
-        << " by a " << json_type_to_string(obj2->type()) << ". ";
+    oss << "[Json-Error] Attempting to evaluate a "
+        << json_type_to_string(obj1->type()) << " by a "
+        << json_type_to_string(obj2->type()) << ". ";
 #ifndef NDEBUG
     oss << "Values: ";
     try {
@@ -79,13 +80,18 @@ std::invalid_argument json_lib::throw_message(
 }
 
 json_lib::json_boolean::json_boolean(const bool value)
-    : value(value) { }
+    : value(value) {
+    _type = (json_type::boolean_json);
+}
 
 json_lib::json_integer::json_integer(const int value)
-    : value(value) { }
+    : value(value) {
+    _type = (json_type::integer_json);
+}
 
 json_lib::json_real::json_real(const float value)
     : value(value) {
+    _type = (json_type::real_json);
     const std::string result = std::to_string(value);
     size_t last = result.size() - 1;
     while (result[last] == '0') {
@@ -99,6 +105,7 @@ json_lib::json_real::json_real(const float value)
 
 json_lib::json_real::json_real(const std::string& str_value)
     : str_value(str_value) {
+    _type = (json_type::real_json);
     size_t pos;
     try {
         value = std::stof(str_value, &pos);
@@ -113,17 +120,20 @@ json_lib::json_real::json_real(const std::string& str_value)
 }
 
 json_lib::json_string::json_string(std::string value)
-    : value(std::move(value)) { }
+    : value(std::move(value)) {
+    _type = (json_type::string_json);
+}
 
 json_lib::json_array::json_array(const std::vector<std::shared_ptr<json>>& arr)
     : list(arr) {
-    touch();
+    _type = (json_type::array_json);
 }
 
 json_lib::json_object::json_object(
     const std::vector<std::pair<std::string, std::shared_ptr<json>>>& obj
 )
     : data(obj) {
+    _type = (json_type::object_json);
     for (size_t i = 0; i < obj.size(); ++i) {
         if (indexes.contains(obj[i].first)) {
             throw std::invalid_argument(
@@ -132,38 +142,7 @@ json_lib::json_object::json_object(
         }
         indexes[obj[i].first] = i;
     }
-    touch();
 }
-
-json_lib::json_type json_lib::json::type() const {
-    return json_type::null_json;
-}
-
-json_lib::json_type json_lib::json_boolean::type() const {
-    return json_type::boolean_json;
-}
-
-json_lib::json_type json_lib::json_integer::type() const {
-    return json_type::integer_json;
-}
-
-json_lib::json_type json_lib::json_real::type() const {
-    return json_type::real_json;
-}
-
-json_lib::json_type json_lib::json_string::type() const {
-    return json_type::string_json;
-}
-
-json_lib::json_type json_lib::json_array::type() const {
-    return json_type::array_json;
-}
-
-json_lib::json_type json_lib::json_object::type() const {
-    return json_type::object_json;
-}
-
-void json_lib::json::touch() { }
 
 void json_lib::json_array::touch() {
     if (touched) {
@@ -171,7 +150,16 @@ void json_lib::json_array::touch() {
         return;
     }
     touched = true;
-    std::ranges::for_each(list, [](const auto& json) { json->touch(); });
+    for (auto& child : list) {
+        if (child->type() == json_type::reference_json) {
+            const auto ref
+                = std::dynamic_pointer_cast<reference_lib::json_reference>(child
+                );
+            ref->set_local_head(shared_from_this());
+            child = ref->value();
+        }
+        child->touch();
+    }
     touched = false;
 }
 
@@ -181,9 +169,16 @@ void json_lib::json_object::touch() {
         return;
     }
     touched = true;
-    std::ranges::for_each(data | std::views::values, [](const auto& json) {
-        json->touch();
-    });
+    for (auto& child : data | std::views::values) {
+        if (child->type() == json_type::reference_json) {
+            const auto ref
+                = std::dynamic_pointer_cast<reference_lib::json_reference>(child
+                );
+            ref->set_local_head(shared_from_this());
+            child = ref->value();
+        }
+        child->touch();
+    }
     touched = false;
 }
 

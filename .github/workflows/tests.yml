@@ -1,4 +1,4 @@
-name: Unit Tests
+name: Checks
 
 on:
   pull_request:
@@ -13,12 +13,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: MarkusJx/googletest-installer@v1.1
 
-      - name: Clang-format
-        uses: jidicula/clang-format-action@v4.13.0
-        with:
-          clang-format-version: '18'
-          check-path: '.'
-
       - name: Build project
         run: |
           mkdir build
@@ -30,3 +24,14 @@ jobs:
         run: |
           cd build
           ctest -V
+
+  code-style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clang-format
+        uses: jidicula/clang-format-action@v4.13.0
+        with:
+          clang-format-version: '18'
+          check-path: '.'

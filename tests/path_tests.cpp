@@ -30,7 +30,7 @@ TEST(PathTest, ParseDynamicJsonTest) {
     std::string buffer = R"($.first.second.third.fourth)";
     parser_lib::parser p(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         result->to_string(), "$[\"first\"][\"second\"][\"third\"][\"fourth\"]"
     );
@@ -38,25 +38,25 @@ TEST(PathTest, ParseDynamicJsonTest) {
     buffer = R"(@["library"]["books"])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "@[\"library\"][\"books\"]");
 
     buffer = R"(array[0][1][2][3][4])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$[\"array\"][0][1][2][3][4]");
 
     buffer = R"($["food"].drink.coffee[1])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$[\"food\"][\"drink\"][\"coffee\"][1]");
 
     buffer = R"((((($).alpha).beta).gamma.delta)[0])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         result->to_string(), "$[\"alpha\"][\"beta\"][\"gamma\"][\"delta\"][0]"
     );
@@ -64,7 +64,7 @@ TEST(PathTest, ParseDynamicJsonTest) {
     buffer = R"($["apple", "banana", "cherry", 7, 8, 9])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         result->to_string(),
         "${[\"apple\"], [\"banana\"], [\"cherry\"], [7], [8], [9]}"
@@ -73,7 +73,7 @@ TEST(PathTest, ParseDynamicJsonTest) {
     buffer = R"(${.foo, .bar.baz, [1].qux, [1]["flob"]})";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         result->to_string(),
         "${[\"foo\"], [\"bar\"][\"baz\"], [1][\"qux\"], [1][\"flob\"]}"
@@ -82,7 +82,7 @@ TEST(PathTest, ParseDynamicJsonTest) {
     buffer = R"((key.a[key.b[(key.c)]]))";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         result->to_string(),
         "$[\"key\"][\"a\"][$[\"key\"][\"b\"][$[\"key\"][\"c\"]]]"
@@ -91,25 +91,25 @@ TEST(PathTest, ParseDynamicJsonTest) {
     buffer = R"(${1, 2, 3, 4})";
     p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$");
 
     buffer = R"(${.a, , .c, .d})";
     p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$");
 
     buffer = R"($[(1])";
     p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$");
 
     buffer = R"($.[1])";
     p = parser_lib::parser(buffer);
     EXPECT_THROW(p.completely_parse_json(result, true), std::runtime_error);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$");
 
     std::shared_ptr<json_lib::json> invalid_result;
@@ -132,7 +132,7 @@ TEST(PathTest, SimplifyDynamicJsonTest) {
     buffer = R"({"key":$}.key.extra)";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$[\"extra\"]");
 
     buffer = R"([10,20,30,40,50][3])";
@@ -144,7 +144,7 @@ TEST(PathTest, SimplifyDynamicJsonTest) {
     buffer = R"([10,20,[30,30,30,{"key" : $.sample},30],40,50][2][3].key)";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "$[\"sample\"]");
 
     buffer = R"([100,50,25,0][@[3]])";
@@ -156,37 +156,37 @@ TEST(PathTest, SimplifyDynamicJsonTest) {
     buffer = R"([[1],[2],[3],[4]]{[3],[2],[1],[0]}[$])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "[[4][$], [3][$], [2][$], [1][$]]");
 
     buffer = R"([[1],[2],[3],[4]]{[3],[2],[1],[0]}[0])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "[4, 3, 2, 1]");
 
     buffer = R"([1,2,3,4][3,2,1,0])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "[4, 3, 2, 1]");
 
     buffer = R"([1,2,3,4][$[2]])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "[1, 2, 3, 4][$[2]]");
 
     buffer = R"([1,2,3,4][$.key])";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "[1, 2, 3, 4][$[\"key\"]]");
 
     buffer = R"({"a":1, "b":2, "c":3}{.b, .c, .a})";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(result->to_string(), "[2, 3, 1]");
 
     buffer = R"({"key1":5, "key2":@.key1, "key3":55})";
@@ -201,12 +201,11 @@ TEST(PathTest, SimplifyDynamicJsonTest) {
     EXPECT_EQ(result->type(), json_lib::json_type::integer_json);
     EXPECT_EQ(result->to_string(), "5");
 
-    // todo:
-    // buffer = R"({"key1":5, "key2":@, "key3":55}.key2.key2.key2.key2.key1)";
-    // p = parser_lib::parser(buffer);
-    // p.completely_parse_json(result, true);
-    // EXPECT_EQ(result->type(), json_lib::json_type::integer_json);
-    // EXPECT_EQ(result->to_string(), "5");
+    buffer = R"({"key1":5, "key2":@, "key3":55}.key2.key2.key2.key2.key1)";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::integer_json);
+    EXPECT_EQ(result->to_string(), "5");
 
     buffer = R"({"key1":5, "key2":@, "key3":55})";
     p = parser_lib::parser(buffer);
@@ -258,7 +257,7 @@ TEST(PathTest, AbstractFunctionJsonTest) {
     std::string buffer = R"(fu())";
     parser_lib::parser p(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         std::dynamic_pointer_cast<reference_lib::json_reference>(result)
             ->reference_type(),
@@ -269,7 +268,7 @@ TEST(PathTest, AbstractFunctionJsonTest) {
     buffer = R"(fu(1))";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         std::dynamic_pointer_cast<reference_lib::json_reference>(result)
             ->reference_type(),
@@ -281,7 +280,7 @@ TEST(PathTest, AbstractFunctionJsonTest) {
         = R"(fu(null, true, false, 1, 2.0, "string", [1, 2, 3], {"key": 4}))";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         std::dynamic_pointer_cast<reference_lib::json_reference>(result)
             ->reference_type(),
@@ -295,7 +294,7 @@ TEST(PathTest, AbstractFunctionJsonTest) {
     buffer = R"(fu($.array[0]))";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         std::dynamic_pointer_cast<reference_lib::json_reference>(result)
             ->reference_type(),
@@ -306,7 +305,7 @@ TEST(PathTest, AbstractFunctionJsonTest) {
     buffer = R"(fu(array[0]))";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         std::dynamic_pointer_cast<reference_lib::json_reference>(result)
             ->reference_type(),
@@ -317,7 +316,7 @@ TEST(PathTest, AbstractFunctionJsonTest) {
     buffer = R"($.array.fu())";
     p = parser_lib::parser(buffer);
     p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::custom_json);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
     EXPECT_EQ(
         std::dynamic_pointer_cast<reference_lib::json_reference>(result)
             ->length(),

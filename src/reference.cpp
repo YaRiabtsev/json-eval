@@ -37,22 +37,22 @@ reference_lib::json_set::json_set(
     const std::vector<std::shared_ptr<json_reference>>& elements
 )
     : elements(elements) {
+    _reference_type = json_reference_type::set_json;
     set_head_type(ref_head_type::accessor);
 }
 
 reference_lib::json_function::json_function(std::string name)
-    : name(std::move(name)) { }
+    : name(std::move(name)) {
+    _reference_type = json_reference_type::function_json;
+}
 
 json_lib::json_type reference_lib::json_reference::type() const {
-    return json_lib::json_type::custom_json;
+    return json_lib::json_type::reference_json;
 }
 
 std::string reference_lib::json_reference::indented_string(
     const size_t indent_level, const bool pretty
 ) const {
-    if (looped) {
-        throw std::runtime_error("object is looped");
-    }
     std::string result;
     switch (head_type) {
     case ref_head_type::object:
@@ -105,7 +105,7 @@ std::string reference_lib::json_reference::tail_to_string() const {
     std::string result;
     for (const auto& accessor : tail) {
         std::string suffix = accessor->to_string();
-        if (accessor->type() == json_lib::json_type::custom_json) {
+        if (accessor->type() == json_lib::json_type::reference_json) {
             if (std::dynamic_pointer_cast<json_reference>(accessor)
                     ->reference_type()
                 == json_reference_type::set_json) {
@@ -119,38 +119,23 @@ std::string reference_lib::json_reference::tail_to_string() const {
 }
 
 void reference_lib::json_reference::touch() {
-    if (touched) {
-        looped = true;
-        return;
-    }
-    touched = true;
     if (head_type == ref_head_type::object) {
         head->touch();
     }
-    touched = false;
+    for (const auto& accessor : tail) {
+        accessor->touch();
+    }
 }
 
 void reference_lib::json_set::touch() {
-    if (get_head_type() == ref_head_type::set) {
-        for (const auto& element : elements) {
-            element->touch();
-        }
+    for (const auto& element : elements) {
+        element->touch();
     }
 }
 
 reference_lib::json_reference_type
 reference_lib::json_reference::reference_type() const {
-    return json_reference_type::reference_json;
-}
-
-reference_lib::json_reference_type
-reference_lib::json_set::reference_type() const {
-    return json_reference_type::set_json;
-}
-
-reference_lib::json_reference_type
-reference_lib::json_function::reference_type() const {
-    return json_reference_type::function_json;
+    return _reference_type;
 }
 
 void reference_lib::json_reference::emplace_back(
@@ -184,7 +169,6 @@ void reference_lib::json_reference::set_local_head(
         head = local;
         head_type = ref_head_type::object;
         simplify();
-        touch();
     }
 }
 
@@ -205,7 +189,7 @@ std::shared_ptr<json_lib::json> reference_lib::json_reference::value() {
     if (length() > 0 || head_type != ref_head_type::object) {
         return shared_from_this();
     }
-    if (head->type() != json_lib::json_type::custom_json) {
+    if (head->type() != json_lib::json_type::reference_json) {
         return head;
     }
     return std::dynamic_pointer_cast<json_reference>(head)->value();
@@ -219,14 +203,14 @@ reference_lib::json_reference::get_head_type() const {
 void reference_lib::json_reference::simplify() {
     while (head_type == ref_head_type::object && length() > 0) {
         auto accessor = tail.front();
-        if (head->type() == json_lib::json_type::custom_json) {
+        if (head->type() == json_lib::json_type::reference_json) {
             tail.pop_front();
             const auto ref_head
                 = std::dynamic_pointer_cast<json_reference>(head);
             ref_head->emplace_back(accessor);
             head = ref_head->value();
         } else {
-            if (accessor->type() == json_lib::json_type::custom_json) {
+            if (accessor->type() == json_lib::json_type::reference_json) {
                 const auto ref_accessor
                     = std::dynamic_pointer_cast<json_reference>(accessor);
                 switch (ref_accessor->reference_type()) {

@@ -32,16 +32,15 @@
 
 namespace json_lib {
 /**
- * @brief Enable or disable symmetric indexing (e.g., array index referencing).
+ * @brief Enable or disable symmetric indexing for JSON objects.
  *
- * When `enable_symmetric_indexing` is true, indexing can be used symmetrically,
- * similar to C-style dynamic arrays where `arr[index] == index[arr]`. This
- * functionality is extended here to JSON objects, allowing for keys and values
- * to be accessed interchangeably in certain cases.
+ * When `enable_symmetric_indexing` is set to `true`, symmetric indexing allows
+ * for flexible access, similar to C-style dynamic arrays where `arr[index] ==
+ * index[arr]`. For JSON objects, this feature enables interchangeable access to
+ * keys and values in specific cases, allowing for concise access patterns.
  *
- * ### Usage
- * Symmetric indexing can reduce nested brackets when accessing deeply
- * structured JSON objects. For example, consider:
+ * ### Example with JSON
+ * Consider a JSON structure like:
  * ```json
  * {
  *     "obj": {
@@ -50,48 +49,137 @@ namespace json_lib {
  *     }
  * }
  * ```
- * Instead of writing `obj[obj.public_arr[2]]`, you can use
- * `obj.public_arr[2][obj]`, which can be more
- * concise, albeit less intuitive.
+ * With symmetric indexing enabled, instead of writing `obj[obj.public_arr[2]]`,
+ * you could write `obj.public_arr[2][obj]`, which accesses `"secret_key"` in a
+ * more concise form.
+ *
+ * ### How it looks in source code
+ * In C++ code, enabling symmetric indexing can simplify complex JSON access
+ * patterns:
+ * ```cpp
+ * // Define JSON object with shared pointers
+ * std::vector<std::pair<std::string, std::shared_ptr<json_lib::json>>> values =
+ * {
+ *     { "secret_key", std::make_shared<json_lib::json_integer>(5) },
+ *     { "public_arr", std::make_shared<json_lib::json_array>(
+ *         std::vector<std::shared_ptr<json_lib::json>>{
+ *             std::make_shared<json_lib::json_string>("key"),
+ *             std::make_shared<json_lib::json_string>("key"),
+ *             std::make_shared<json_lib::json_string>("secret_key"),
+ *             std::make_shared<json_lib::json_string>("key")
+ *         })
+ *     }
+ * };
+ * std::shared_ptr<json_lib::json_object> obj =
+ *     std::make_shared<json_lib::json_object>(values);
+ * assert(obj->at("public_arr")->at(2)->by(obj) ==
+ *     obj->by(obj->at("public_arr")->at(2)) &&
+ *     "Symmetric indexing is enabled");
+ * ```
+ * This demonstrates how symmetric indexing can simplify access to values in
+ * nested structures, as shown in the JSON example above.
  *
  * **Default:** `false`
  */
 inline bool enable_symmetric_indexing = false;
 
 /**
- * @brief Enable or disable negative indexing for arrays.
+ * @brief Enable or disable support for negative array indexing.
  *
- * When `enable_negative_indexing` is set to true, negative indices are allowed,
- * similar to Python-style indexing where `array[-index]` retrieves elements in
- * reverse order, calculated as `array[size - index]`.
+ * When `enable_negative_indexing` is set to `true`, negative indices are
+ * supported in arrays, similar to Python-style indexing. This allows for
+ * reverse-order element access, where `array[-index]` retrieves elements
+ * from the end, computed as `array[size - index]`.
  *
- * **Example:**
- * ```cpp
- * json_array arr = json_array({ "first", "second", "third" });
- * arr[-1];  // Returns "third" (last element)
+ * ### Example with JSON
+ * In a JSON array structure like:
+ * ```json
+ * {
+ *     "arr": [1, 1.0, true, "test"]
+ * }
  * ```
+ * Accessing `arr[-1]` would be equivalent to `arr[3]` (last element, because
+ * `arr.size() == 4`), returning `"test"`.
+ *
+ * ### How it looks in source code
+ * In C++ code, using `shared_ptr` for JSON elements:
+ * ```cpp
+ * std::vector<std::shared_ptr<json_lib::json>> values = {
+ *     std::make_shared<json_lib::json_integer>(1),
+ *     std::make_shared<json_lib::json_real>(1.0f),
+ *     std::make_shared<json_lib::json_boolean>(true),
+ *     std::make_shared<json_lib::json_string>("test")
+ * };
+ * std::shared_ptr<json_lib::json_array> arr =
+ *     std::make_shared<json_lib::json_array>(values);
+ * assert(arr->size() == 4 &&
+ *     "Array contains 4 elements");
+ * assert(arr->at(-1) == arr->at(3) &&
+ *     arr->at(-1)->to_string() == "\"test\"" &&
+ *     "Negative indexing is enabled");
+ * ```
+ * This demonstrates how negative indexing retrieves the last element,
+ * similar to the JSON example above.
  *
  * **Default:** `false`
  */
 inline bool enable_negative_indexing = false;
 
+/**
+ * @brief Enumeration representing the different types of JSON values.
+ *
+ * The `json_type` enumeration defines the various types of JSON values that
+ * can be represented in the library. Each type corresponds to a fundamental
+ * data structure in JSON, allowing for type checking and handling of
+ * different JSON elements.
+ */
 enum class json_type : int {
-    null_json,
-    boolean_json,
-    integer_json,
-    real_json,
-    string_json,
-    array_json,
-    object_json,
-    custom_json
+    null_json, ///< Represents a JSON null value.
+    boolean_json, ///< Represents a JSON boolean value (true or false).
+    integer_json, ///< Represents a JSON integer value.
+    real_json, ///< Represents a JSON real (floating-point) value.
+    string_json, ///< Represents a JSON string value.
+    array_json, ///< Represents a JSON array.
+    object_json, ///< Represents a JSON object.
+    reference_json ///< Represents an abstract JSON type, referring to another
+                   ///< JSON value.
 };
 
+/**
+ * @brief Convert a `json_type` to its corresponding string representation.
+ *
+ * The `json_type_to_string` function takes a `json_type` value and converts
+ * it to a human-readable string. This can be useful for debugging or logging
+ * purposes, allowing users to easily identify the type of a JSON value.
+ *
+ * @param type The `json_type` to convert to a string.
+ * @return A string representation of the given `json_type`.
+ */
 std::string json_type_to_string(json_type type);
 
+/**
+ * @brief Base class representing a JSON value.
+ *
+ * The `json` class serves as the abstract base class for all JSON types in the
+ * library. It provides a common interface for accessing and manipulating JSON
+ * values, supporting features like type identification, string conversion, and
+ * recursive processing while handling potential circular references.
+ */
 class json : public std::enable_shared_from_this<json> {
 public:
     virtual ~json() = default;
-    [[nodiscard]] virtual json_type type() const;
+
+    /**
+     * @brief Get the JSON type of the object.
+     *
+     * This method returns the type of the JSON value represented by this
+     * object. It allows users to determine the specific kind of JSON element
+     * (e.g., null, boolean, integer) at runtime.
+     *
+     * @return The `json_type` of the object.
+     */
+    virtual constexpr json_type type() const { return _type; }
+
     /**
      * @brief Prevents infinite loops by marking objects during recursive JSON
      * processing.
@@ -101,7 +189,18 @@ public:
      * operations, this function enables detection of repeated references to
      * halt processing if a loop is detected.
      */
-    virtual void touch();
+    virtual void touch() { }
+
+    /**
+     * @brief Check if the JSON element is empty.
+     *
+     * This method determines whether the JSON element contains any nested
+     * values. For collection types such as `json_array` and `json_object`, if
+     * their size is zero, it means the collection is empty and contains no
+     * nested values.
+     *
+     * @return `true` if the JSON element is empty; `false` otherwise.
+     */
     virtual bool empty() const;
     /**
      * @brief Specifies if the JSON element is consistently represented in a
@@ -122,17 +221,72 @@ public:
      * formatting may apply.
      */
     virtual bool compact() const;
+
+    /**
+     * @brief Convert the JSON element to a string.
+     *
+     * This method generates a string representation of the JSON element by
+     * calling `formatted_string` with the `pretty` flag set to `false`. It
+     * provides a compact representation of the JSON value without additional
+     * formatting.
+     *
+     * @return A string representation of the JSON element in a compact format.
+     */
     virtual std::string to_string() const;
+
+    /**
+     * @brief Convert the JSON element to a formatted string.
+     *
+     * This method generates a string representation of the JSON element with
+     * formatting applied based on the `pretty` flag. If `pretty` is true,
+     * the output will be structured with indentation and line breaks for better
+     * readability; otherwise, it will return a compact representation.
+     *
+     * @param pretty Flag indicating whether to format the output for
+     * readability.
+     * @return A formatted string representation of the JSON element.
+     */
     virtual std::string formatted_string(bool pretty) const;
+
+    /**
+     * @brief Convert the JSON element to an indented string representation.
+     *
+     * This method generates a string representation of the JSON element with
+     * a specified indentation level and formatting applied based on the
+     * `pretty` flag. This is particularly useful for generating well-structured
+     * output.
+     *
+     * @param indent_level The number of spaces to use for indentation.
+     * @param pretty Flag indicating whether to format the output for
+     * readability.
+     * @return An indented string representation of the JSON element.
+     */
     virtual std::string indented_string(size_t indent_level, bool pretty) const;
+
+    /**
+     * @brief Retrieve a nested JSON element by another JSON value.
+     *
+     * This method serves as an alternative to `at()`, allowing access to nested
+     * values using another JSON object as a key or index. While `at()` works
+     * only with constant types (like int or string for sets), `by()` can use
+     * JSON values for more flexible indexing. It also supports symmetric and
+     * negative indexing if those features are enabled.
+     *
+     * @param item A shared pointer to a JSON object that serves as the key or
+     * index to access a nested value.
+     * @return A shared pointer to the nested JSON element corresponding to the
+     * provided key or index.
+     */
     [[nodiscard]] virtual std::shared_ptr<json>
     by(const std::shared_ptr<json>& item) const;
+
+protected:
+    json_type _type = json_type::null_json; ///< The type of the JSON object.
 };
 
 class json_boolean final : public json {
 public:
     explicit json_boolean(bool value);
-    [[nodiscard]] json_type type() const override;
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
 
@@ -143,7 +297,6 @@ private:
 class json_integer final : public json {
 public:
     explicit json_integer(int value);
-    [[nodiscard]] json_type type() const override;
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
     [[nodiscard]] int as_index() const;
@@ -158,7 +311,6 @@ class json_real final : public json {
 public:
     explicit json_real(float value);
     explicit json_real(const std::string& str_value);
-    [[nodiscard]] json_type type() const override;
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
 
@@ -170,7 +322,6 @@ private:
 class json_string final : public json {
 public:
     explicit json_string(std::string value);
-    [[nodiscard]] json_type type() const override;
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
     [[nodiscard]] std::string as_key() const;
@@ -184,7 +335,6 @@ private:
 class json_array final : public json {
 public:
     explicit json_array(const std::vector<std::shared_ptr<json>>& arr = {});
-    [[nodiscard]] json_type type() const override;
     void touch() override;
     bool empty() const override;
     bool compact() const override;
@@ -211,7 +361,6 @@ public:
         const std::vector<std::pair<std::string, std::shared_ptr<json>>>& obj
         = {}
     );
-    [[nodiscard]] json_type type() const override;
     void touch() override;
     bool empty() const override;
     bool compact() const override;
