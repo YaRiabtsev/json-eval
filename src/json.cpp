@@ -23,6 +23,7 @@
  */
 
 #include "json.hpp"
+#include "reference.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -30,19 +31,19 @@
 
 std::string json_lib::json_type_to_string(const json_type type) {
     switch (type) {
-    case json_lib::json_type::object_json:
+    case json_type::object_json:
         return "JSON-Object";
-    case json_lib::json_type::array_json:
+    case json_type::array_json:
         return "JSON-Array";
-    case json_lib::json_type::string_json:
+    case json_type::string_json:
         return "JSON-String";
-    case json_lib::json_type::real_json:
+    case json_type::real_json:
         return "JSON-Real";
-    case json_lib::json_type::integer_json:
+    case json_type::integer_json:
         return "JSON-Integer";
-    case json_lib::json_type::boolean_json:
+    case json_type::boolean_json:
         return "JSON-Boolean";
-    case json_lib::json_type::null_json:
+    case json_type::null_json:
         return "JSON-Null";
     default:
         return "Unknown JSON-Type";
@@ -50,14 +51,13 @@ std::string json_lib::json_type_to_string(const json_type type) {
 }
 
 std::invalid_argument json_lib::throw_message(
-    const std::shared_ptr<const json_lib::json>& obj1,
-    const std::shared_ptr<const json_lib::json>& obj2,
-    const std::source_location location
+    const std::shared_ptr<const json>& obj1,
+    const std::shared_ptr<const json>& obj2, const std::source_location location
 ) {
     std::ostringstream oss;
-    oss << "[Json-Error] "
-        << "Attempting to evaluate a " << json_type_to_string(obj1->type())
-        << " by a " << json_type_to_string(obj2->type()) << ". ";
+    oss << "[Json-Error] Attempting to evaluate a "
+        << json_type_to_string(obj1->type()) << " by a "
+        << json_type_to_string(obj2->type()) << ". ";
 #ifndef NDEBUG
     oss << "Values: ";
     try {
@@ -80,13 +80,18 @@ std::invalid_argument json_lib::throw_message(
 }
 
 json_lib::json_boolean::json_boolean(const bool value)
-    : value(value) { }
+    : value(value) {
+    _type = (json_type::boolean_json);
+}
 
 json_lib::json_integer::json_integer(const int value)
-    : value(value) { }
+    : value(value) {
+    _type = (json_type::integer_json);
+}
 
 json_lib::json_real::json_real(const float value)
     : value(value) {
+    _type = (json_type::real_json);
     const std::string result = std::to_string(value);
     size_t last = result.size() - 1;
     while (result[last] == '0') {
@@ -100,6 +105,7 @@ json_lib::json_real::json_real(const float value)
 
 json_lib::json_real::json_real(const std::string& str_value)
     : str_value(str_value) {
+    _type = (json_type::real_json);
     size_t pos;
     try {
         value = std::stof(str_value, &pos);
@@ -114,87 +120,28 @@ json_lib::json_real::json_real(const std::string& str_value)
 }
 
 json_lib::json_string::json_string(std::string value)
-    : value(std::move(value)) { }
+    : value(std::move(value)) {
+    _type = (json_type::string_json);
+}
 
 json_lib::json_array::json_array(const std::vector<std::shared_ptr<json>>& arr)
     : list(arr) {
-    touch();
+    _type = (json_type::array_json);
 }
 
 json_lib::json_object::json_object(
     const std::vector<std::pair<std::string, std::shared_ptr<json>>>& obj
 )
     : data(obj) {
+    _type = (json_type::object_json);
     for (size_t i = 0; i < obj.size(); ++i) {
+        if (indexes.contains(obj[i].first)) {
+            throw std::invalid_argument(
+                "key `" + obj[i].first + "` is already set"
+            );
+        }
         indexes[obj[i].first] = i;
     }
-    touch();
-}
-
-json_lib::json_type json_lib::json::type() const {
-    return json_lib::json_type::null_json;
-}
-
-json_lib::json_type json_lib::json_boolean::type() const {
-    return json_lib::json_type::boolean_json;
-}
-
-json_lib::json_type json_lib::json_integer::type() const {
-    return json_lib::json_type::integer_json;
-}
-
-json_lib::json_type json_lib::json_real::type() const {
-    return json_lib::json_type::real_json;
-}
-
-json_lib::json_type json_lib::json_string::type() const {
-    return json_lib::json_type::string_json;
-}
-
-json_lib::json_type json_lib::json_array::type() const {
-    return json_lib::json_type::array_json;
-}
-
-json_lib::json_type json_lib::json_object::type() const {
-    return json_lib::json_type::object_json;
-}
-
-bool json_lib::json::is_empty() const {
-    if (type() == json_lib::json_type::array_json) {
-        const auto arr = std::dynamic_pointer_cast<const json_lib::json_array>(
-            shared_from_this()
-        );
-        return arr->size() == 0;
-    }
-    if (type() == json_lib::json_type::object_json) {
-        const auto arr = std::dynamic_pointer_cast<const json_lib::json_object>(
-            shared_from_this()
-        );
-        return arr->size() == 0;
-    }
-    return true;
-}
-
-bool json_lib::json::is_inline() const { return true; }
-
-bool json_lib::json_boolean::is_inline() const { return true; }
-
-bool json_lib::json_integer::is_inline() const { return true; }
-
-bool json_lib::json_real::is_inline() const { return true; }
-
-bool json_lib::json_string::is_inline() const { return true; }
-
-bool json_lib::json_array::is_inline() const {
-    return std::ranges::all_of(list, [](const auto& element) {
-        return element->is_inline() && element->is_empty();
-    });
-}
-
-bool json_lib::json_object::is_inline() const {
-    return size() == 0
-        || (size() == 1 && data.begin()->second->is_inline()
-            && data.begin()->second->is_empty());
 }
 
 void json_lib::json_array::touch() {
@@ -202,9 +149,17 @@ void json_lib::json_array::touch() {
         looped = true;
         return;
     }
-
     touched = true;
-    std::ranges::for_each(list, [](const auto& json) { json->touch(); });
+    for (auto& child : list) {
+        if (child->type() == json_type::reference_json) {
+            const auto ref
+                = std::dynamic_pointer_cast<reference_lib::json_reference>(child
+                );
+            ref->set_local_head(shared_from_this());
+            child = ref->value();
+        }
+        child->touch();
+    }
     touched = false;
 }
 
@@ -213,33 +168,65 @@ void json_lib::json_object::touch() {
         looped = true;
         return;
     }
-
     touched = true;
-    std::ranges::for_each(data | std::views::values, [](const auto& json) {
-        json->touch();
-    });
+    for (auto& child : data | std::views::values) {
+        if (child->type() == json_type::reference_json) {
+            const auto ref
+                = std::dynamic_pointer_cast<reference_lib::json_reference>(child
+                );
+            ref->set_local_head(shared_from_this());
+            child = ref->value();
+        }
+        child->touch();
+    }
     touched = false;
 }
 
-std::string json_lib::json::to_string(const bool is_pretty) const {
-    return to_string(0, is_pretty);
+bool json_lib::json::empty() const { return true; }
+
+bool json_lib::json_array::empty() const { return size() == 0; }
+
+bool json_lib::json_object::empty() const { return size() == 0; }
+
+bool json_lib::json::compact() const { return true; }
+
+bool json_lib::json_array::compact() const {
+    return std::ranges::all_of(list, [](const auto& element) {
+        return element->compact() && element->empty();
+    });
 }
 
-std::string json_lib::json::to_string(size_t, bool) const { return "null"; }
+bool json_lib::json_object::compact() const {
+    return size() == 0
+        || (size() == 1 && data.begin()->second->compact()
+            && data.begin()->second->empty());
+}
 
-std::string json_lib::json_boolean::to_string(size_t, bool) const {
+std::string json_lib::json::to_string() const {
+    return formatted_string(false);
+}
+
+std::string json_lib::json::formatted_string(const bool pretty) const {
+    return indented_string(0, pretty);
+}
+
+std::string json_lib::json::indented_string(size_t, bool) const {
+    return "null";
+}
+
+std::string json_lib::json_boolean::indented_string(size_t, bool) const {
     return value ? "true" : "false";
 }
 
-std::string json_lib::json_integer::to_string(size_t, bool) const {
+std::string json_lib::json_integer::indented_string(size_t, bool) const {
     return std::to_string(value);
 }
 
-std::string json_lib::json_real::to_string(size_t, bool) const {
+std::string json_lib::json_real::indented_string(size_t, bool) const {
     return str_value;
 }
 
-std::string json_lib::json_string::to_string(size_t, bool) const {
+std::string json_lib::json_string::indented_string(size_t, bool) const {
     std::ostringstream escaped;
     escaped << "\"";
     for (const char ch : value) {
@@ -282,58 +269,75 @@ std::string json_lib::json_string::to_string(size_t, bool) const {
     return escaped.str();
 }
 
-std::string json_lib::json_array::to_string(
-    const size_t indent_level, const bool is_pretty
-) const {
-    if (looped) {
-        throw std::runtime_error("object is looped");
-    }
-    char brackets[2] = { '[', ']' };
-    auto result = json_lib::format_container(
-        list, format_item, brackets, indent_level, is_pretty && !is_inline()
-    );
-    return result;
+std::string json_lib::json_array::format_item(
+    const std::shared_ptr<json>& item, const size_t nested_level,
+    const bool pretty
+) {
+    return item->indented_string(nested_level, pretty);
 }
 
-std::string json_lib::json_object::to_string(
-    const size_t indent_level, const bool is_pretty
+std::string json_lib::json_array::indented_string(
+    const size_t indent_level, const bool pretty
 ) const {
     if (looped) {
         throw std::runtime_error("object is looped");
     }
-    char brackets[2] = { '{', '}' };
-    auto result = json_lib::format_container(
-        data, format_item, brackets, indent_level, is_pretty && !is_inline()
-    );
-    return result;
+    return '['
+        + format_container(
+               list, format_item, indent_level, pretty && !compact()
+        )
+        + "]";
 }
 
 std::string json_lib::json_object::format_item(
     const std::pair<std::string, std::shared_ptr<json>>& item,
-    const size_t nested_level, const bool is_pretty
+    const size_t nested_level, const bool pretty
 ) {
     return "\"" + item.first
-        + "\": " + item.second->to_string(nested_level, is_pretty);
+        + "\": " + item.second->indented_string(nested_level, pretty);
 }
 
-std::string json_lib::json_array::format_item(
-    const std::shared_ptr<json>& item, const size_t nested_level,
-    const bool is_pretty
-) {
-    return item->to_string(nested_level, is_pretty);
+std::string json_lib::json_object::indented_string(
+    const size_t indent_level, const bool pretty
+) const {
+    if (looped) {
+        throw std::runtime_error("object is looped");
+    }
+    return '{'
+        + format_container(
+               data, format_item, indent_level, pretty && !compact()
+        )
+        + "}";
+}
+
+std::shared_ptr<json_lib::json>
+json_lib::json::by(const std::shared_ptr<json>& item) const {
+    throw throw_message(shared_from_this(), item);
 }
 
 int json_lib::json_integer::as_index() const { return value; }
 
+std::shared_ptr<json_lib::json>
+json_lib::json_integer::by(const std::shared_ptr<json>& item) const {
+    if (enable_symmetric_indexing && item->type() == json_type::array_json) {
+        const auto array = std::dynamic_pointer_cast<json_array>(item);
+        return array->at(as_index());
+    }
+    return json::by(item);
+}
+
 std::string json_lib::json_string::as_key() const { return value; }
 
-std::vector<std::string> json_lib::json_object::get_keys() {
-    if (keys.size() != size()) {
-        auto result = std::views::keys(indexes);
-        keys = { result.begin(), result.end() };
+std::shared_ptr<json_lib::json>
+json_lib::json_string::by(const std::shared_ptr<json>& item) const {
+    if (enable_symmetric_indexing && item->type() == json_type::object_json) {
+        const auto object = std::dynamic_pointer_cast<json_object>(item);
+        return object->at(as_key());
     }
-    return keys;
+    return json::by(item);
 }
+
+size_t json_lib::json_array::size() const { return list.size(); }
 
 std::shared_ptr<json_lib::json> json_lib::json_array::at(const int index
 ) const {
@@ -347,6 +351,25 @@ std::shared_ptr<json_lib::json> json_lib::json_array::at(const int index
     throw std::out_of_range("index out of range");
 }
 
+std::shared_ptr<json_lib::json>
+json_lib::json_array::by(const std::shared_ptr<json>& item) const {
+    if (item->type() == json_type::integer_json) {
+        const auto number = std::dynamic_pointer_cast<json_integer>(item);
+        return at(number->as_index());
+    }
+    return json::by(item);
+}
+
+size_t json_lib::json_object::size() const { return data.size(); }
+
+std::vector<std::string> json_lib::json_object::get_keys() {
+    if (keys.size() != size()) {
+        auto result = std::views::keys(indexes);
+        keys = { result.begin(), result.end() };
+    }
+    return keys;
+}
+
 std::shared_ptr<json_lib::json> json_lib::json_object::at(const std::string& key
 ) const {
     if (indexes.contains(key)) {
@@ -355,79 +378,11 @@ std::shared_ptr<json_lib::json> json_lib::json_object::at(const std::string& key
     throw std::out_of_range("key not found");
 }
 
-size_t json_lib::json_array::size() const { return list.size(); }
-
-size_t json_lib::json_object::size() const { return data.size(); }
-
-std::shared_ptr<json_lib::json>
-json_lib::json::by(const std::shared_ptr<json>& item) const {
-    throw json_lib::throw_message(shared_from_this(), item);
-}
-
-std::shared_ptr<json_lib::json>
-json_lib::json_boolean::by(const std::shared_ptr<json>& item) const {
-    throw json_lib::throw_message(shared_from_this(), item);
-}
-
-std::shared_ptr<json_lib::json>
-json_lib::json_integer::by(const std::shared_ptr<json>& item) const {
-    if (enable_symmetric_indexing
-        && item->type() == json_lib::json_type::array_json) {
-        const auto array
-            = std::dynamic_pointer_cast<json_lib::json_array>(item);
-        return array->at(as_index());
-    }
-    throw json_lib::throw_message(shared_from_this(), item);
-}
-
-std::shared_ptr<json_lib::json>
-json_lib::json_real::by(const std::shared_ptr<json>& item) const {
-    throw json_lib::throw_message(shared_from_this(), item);
-}
-
-std::shared_ptr<json_lib::json>
-json_lib::json_string::by(const std::shared_ptr<json>& item) const {
-    if (!enable_symmetric_indexing
-        || item->type() != json_lib::json_type::object_json) {
-        throw json_lib::throw_message(shared_from_this(), item);
-    }
-    const auto object = std::dynamic_pointer_cast<json_lib::json_object>(item);
-    return object->at(as_key());
-}
-
-std::shared_ptr<json_lib::json>
-json_lib::json_array::by(const std::shared_ptr<json>& item) const {
-    if (item->type() != json_lib::json_type::integer_json) {
-        throw json_lib::throw_message(shared_from_this(), item);
-    }
-    const auto number = std::dynamic_pointer_cast<json_lib::json_integer>(item);
-    return at(number->as_index());
-}
-
 std::shared_ptr<json_lib::json>
 json_lib::json_object::by(const std::shared_ptr<json>& item) const {
-    if (item->type() != json_lib::json_type::string_json) {
-        throw json_lib::throw_message(shared_from_this(), item);
+    if (item->type() == json_type::string_json) {
+        const auto string = std::dynamic_pointer_cast<json_string>(item);
+        return at(string->as_key());
     }
-    const auto string = std::dynamic_pointer_cast<json_lib::json_string>(item);
-    return at(string->as_key());
+    return json::by(item);
 }
-
-// void json_lib::json_array::emplace_back(const std::shared_ptr<json>& element) {
-//     list.emplace_back(element);
-//     element->touch();
-// }
-//
-// void json_lib::json_object::emplace_back(
-//     const std::string& key, const std::shared_ptr<json>& value
-// ) {
-//     if (indexes.contains(key)) {
-//         throw std::invalid_argument("key `" + key + "` already exists");
-//     }
-//     indexes[key] = data.size();
-//     if (!keys.empty() || data.empty()) {
-//         keys.push_back(key);
-//     }
-//     data.emplace_back(key, value);
-//     value->touch();
-// }
