@@ -1,6 +1,8 @@
-PROJECT_NAME           = "JSON eval"
+PROJECT_NAME           = "JSON Expression Parser"
 PROJECT_NUMBER         = 1.0
-PROJECT_BRIEF          = "A C++ console application that allows evaluating expressions on a JSON file."
+PROJECT_BRIEF          = "**JSON Expression Parser** is a C++20 console application that allows users to evaluate expressions on JSON files
+                          directly from the command line. This tool provides easy access to JSON elements, supports intrinsic functions for
+                          efficient data extraction, and offers basic arithmetic operations."
 
 
 INPUT                  = include src tests

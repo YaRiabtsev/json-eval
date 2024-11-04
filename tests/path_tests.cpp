@@ -324,3 +324,56 @@ TEST(PathTest, AbstractFunctionJsonTest) {
     );
     EXPECT_EQ(result->to_string(), "$[\"array\"][fu()]");
 }
+
+TEST(PathTest, EvalJsonTest) {
+    std::shared_ptr<json_lib::json> base;
+    const std::filesystem::path path = "test_data/troma_imdb.json";
+    parser_lib::parser p(path);
+    p.completely_parse_json(base);
+    EXPECT_EQ(base->type(), json_lib::json_type::object_json);
+
+    std::shared_ptr<json_lib::json> result;
+    std::string buffer = R"($["@type"])";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
+    result->set_root(base);
+    EXPECT_EQ(result->to_string(), "\"ItemList\"");
+
+    buffer = R"(itemListElement[3].item.aggregateRating.ratingCount)";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    result->set_root(base);
+    EXPECT_EQ(result->to_string(), "148");
+
+    buffer = "itemListElement[itemListElement[3].item.aggregateRating."
+             "ratingCount].item.name";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    result->set_root(base);
+    EXPECT_EQ(result->to_string(), "\"Drawing Blood\"");
+
+    buffer
+        = R"(itemListElement[@[3].item.aggregateRating.ratingCount].item.name)";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    result->set_root(base);
+    EXPECT_EQ(result->to_string(), "\"Drawing Blood\"");
+
+    buffer = R"(itemListElement[3, 47, 54, 111].item.name)";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    result->set_root(base);
+    EXPECT_EQ(
+        result->to_string(),
+        "[\"Viewer Discretion Advised\", \"Star Worms II: Attack of the "
+        "Pleasure Pods\", \"The First Turn-On!!\", \"Stuff Stephanie in the "
+        "Incinerator\"]"
+    );
+
+    buffer = R"(itemListElement{[13].item, [147]["item"]}.name)";
+    p = parser_lib::parser(buffer);
+    p.completely_parse_json(result, true);
+    result->set_root(base);
+    EXPECT_EQ(result->to_string(), "[\"Blades\", \"The Boy from Hell\"]");
+}

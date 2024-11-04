@@ -6,26 +6,28 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(
-        -Werror
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(
+            -Werror
 
-        -Wall
-        -Wextra
-        -Wpedantic
+            -Wall
+            -Wextra
+            -Wpedantic
 
-        -Wcast-align
-        -Wcast-qual
-        -Wconversion
-        -Wctor-dtor-privacy
-        -Wenum-compare
-        -Wfloat-equal
-        -Wnon-virtual-dtor
-        -Wold-style-cast
-        -Woverloaded-virtual
-        -Wredundant-decls
-        -Wsign-conversion
-        -Wsign-promo
-)
+            -Wcast-align
+            -Wcast-qual
+            -Wconversion
+            -Wctor-dtor-privacy
+            -Wenum-compare
+            -Wfloat-equal
+            -Wnon-virtual-dtor
+            -Wold-style-cast
+            -Woverloaded-virtual
+            -Wredundant-decls
+            -Wsign-conversion
+            -Wsign-promo
+    )
+endif ()
 
 option(COVERAGE "Enable coverage reporting" OFF)
 option(BUILD_TESTS "Build unit tests" ON)

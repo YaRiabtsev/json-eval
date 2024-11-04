@@ -141,8 +141,10 @@ enum class json_type : int {
     string_json, ///< Represents a JSON string value.
     array_json, ///< Represents a JSON array.
     object_json, ///< Represents a JSON object.
-    reference_json ///< Represents an abstract JSON type, referring to another
-                   ///< JSON value.
+    reference_json, ///< Represents an abstract JSON type, referring to another
+                    ///< JSON value.
+    set_json,
+    function_json
 };
 
 /**
@@ -150,7 +152,7 @@ enum class json_type : int {
  *
  * The `json_type_to_string` function takes a `json_type` value and converts
  * it to a human-readable string. This can be useful for debugging or logging
- * purposes, allowing users to easily identify the type of a JSON value.
+ * purposes, allowing users to easily identify the type of JSON value.
  *
  * @param type The `json_type` to convert to a string.
  * @return A string representation of the given `json_type`.
@@ -190,6 +192,8 @@ public:
      * halt processing if a loop is detected.
      */
     virtual void touch() { }
+
+    virtual void set_root(const std::shared_ptr<json>& item);
 
     /**
      * @brief Check if the JSON element is empty.
@@ -284,14 +288,40 @@ protected:
     json_type _type = json_type::null_json; ///< The type of the JSON object.
 };
 
+/**
+ * @brief Represents a JSON boolean value (`true` or `false`).
+ *
+ * The `json_boolean` class encapsulates a JSON boolean value, providing a
+ * consistent interface for handling JSON booleans within the library. This type
+ * is specialized to represent only `true` or `false` values.
+ */
 class json_boolean final : public json {
 public:
+    /**
+     * @brief Constructs a JSON boolean with the specified value.
+     *
+     * Initializes the `json_boolean` instance with the given boolean value.
+     *
+     * @param value The boolean value (`true` or `false`) to be represented.
+     */
     explicit json_boolean(bool value);
+
+    /**
+     * @brief Returns a string representation of the JSON boolean value.
+     *
+     * This method returns `"true"` or `"false"` based on the boolean value,
+     * regardless of `indent_level` or `pretty` parameters, as these do not
+     * affect boolean formatting.
+     *
+     * @param indent_level Unused for `json_boolean`.
+     * @param pretty Unused for `json_boolean`.
+     * @return A string representation of the JSON boolean value.
+     */
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
 
 private:
-    bool value;
+    bool value; ///< The boolean value represented by this JSON element.
 };
 
 class json_integer final : public json {
@@ -336,6 +366,7 @@ class json_array final : public json {
 public:
     explicit json_array(const std::vector<std::shared_ptr<json>>& arr = {});
     void touch() override;
+    void set_root(const std::shared_ptr<json>& item) override;
     bool empty() const override;
     bool compact() const override;
     std::string
@@ -362,6 +393,7 @@ public:
         = {}
     );
     void touch() override;
+    void set_root(const std::shared_ptr<json>& item) override;
     bool empty() const override;
     bool compact() const override;
     std::string
