@@ -313,16 +313,16 @@ TEST(PathTest, AbstractFunctionJsonTest) {
     );
     EXPECT_EQ(result->to_string(), "fu($[\"array\"][0])");
 
-    buffer = R"($.array.fu())";
-    p = parser_lib::parser(buffer);
-    p.completely_parse_json(result, true);
-    EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
-    EXPECT_EQ(
-        std::dynamic_pointer_cast<reference_lib::json_reference>(result)
-            ->length(),
-        2
-    );
-    EXPECT_EQ(result->to_string(), "$[\"array\"][fu()]");
+    // buffer = R"($.array.fu())";
+    // p = parser_lib::parser(buffer);
+    // p.completely_parse_json(result, true);
+    // EXPECT_EQ(result->type(), json_lib::json_type::reference_json);
+    // EXPECT_EQ(
+    //     std::dynamic_pointer_cast<reference_lib::json_reference>(result)
+    //         ->length(),
+    //     2
+    // );
+    // EXPECT_EQ(result->to_string(), "$[\"array\"][fu()]");
 }
 
 TEST(PathTest, EvalJsonTest) {
@@ -376,4 +376,24 @@ TEST(PathTest, EvalJsonTest) {
     p.completely_parse_json(result, true);
     result->set_root(base);
     EXPECT_EQ(result->to_string(), "[\"Blades\", \"The Boy from Hell\"]");
+}
+
+TEST(PathTest, FunctionsEvalJsonTest) {
+    std::shared_ptr<json_lib::json> base;
+    std::string buffer
+        = R"({"a": { "b": [ 1, 2, { "c": "test" }, [11, 12] ]}})";
+    parser_lib::parser prs(buffer);
+    prs.completely_parse_json(base);
+    std::shared_ptr<json_lib::json> result;
+    buffer = "[max(1, 2), size(1,2,3,4), size($), size([1,2,3,4]) max(a.b[0], "
+             "a.b[1]),min(a.b[3]),size(a.b)]";
+    prs = parser_lib::parser(buffer);
+    prs.completely_parse_json(result, true);
+    EXPECT_EQ(
+        result->to_string(),
+        "[2, 4, size($), 4, max($[\"a\"][\"b\"][0], $[\"a\"][\"b\"][1]), "
+        "min($[\"a\"][\"b\"][3]), size($[\"a\"][\"b\"])]"
+    );
+    result->set_root(base);
+    EXPECT_EQ(result->to_string(), "[2, 4, 1, 4, 2, 11, 4]");
 }

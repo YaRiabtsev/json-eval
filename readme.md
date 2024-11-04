@@ -17,7 +17,7 @@ efficient data extraction, and offers basic arithmetic operations.
 
 1. Build with CMake in Release mode:
     ```bash
-    $ cmake -DCMAKE_BUILD_TYPE=Release <path-to-project-root>
+    $ cmake -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release <path-to-project-root>
     $ cmake --build .
     ```
 2. Run the Application:

@@ -151,6 +151,12 @@ void reference_lib::json_set::set_root(const std::shared_ptr<json>& item) {
     }
 }
 
+void reference_lib::json_function::set_root(const std::shared_ptr<json>& item) {
+    for (const auto& arg : args) {
+        arg->set_root(item);
+    }
+}
+
 reference_lib::json_reference_type
 reference_lib::json_reference::reference_type() const {
     return _reference_type;
@@ -175,7 +181,117 @@ void reference_lib::json_set::emplace_back(const std::shared_ptr<json>& item) {
 void reference_lib::json_function::set_args(
     const std::vector<std::shared_ptr<json>>& args
 ) {
+    for (const auto& arg : args) {
+        if (arg->type() == json_lib::json_type::reference_json) {
+            if (const auto ref_arg
+                = std::dynamic_pointer_cast<json_reference>(arg);
+                ref_arg->length() == 0
+                && ref_arg->get_head_type() == ref_head_type::local) {
+                throw std::invalid_argument("recursive function");
+            }
+        }
+    }
     this->args = args;
+}
+
+std::shared_ptr<json_lib::json> reference_lib::json_function::value() {
+    if (name == "size") {
+        if (args.size() != 1) {
+            return std::make_shared<json_lib::json_integer>(args.size());
+        }
+        if (args[0]->type() == json_lib::json_type::reference_json) {
+            args[0]
+                = std::dynamic_pointer_cast<json_reference>(args[0])->value();
+        }
+        if (args[0]->type() == json_lib::json_type::array_json) {
+            return std::make_shared<json_lib::json_integer>(
+                std::dynamic_pointer_cast<json_lib::json_array>(args[0])->size()
+            );
+        }
+        if (args[0]->type() == json_lib::json_type::object_json) {
+            return std::make_shared<json_lib::json_integer>(
+                std::dynamic_pointer_cast<json_lib::json_object>(args[0])->size(
+                )
+            );
+        }
+    } else if (name == "min" || name == "max") {
+        if (args.empty()) {
+            throw std::invalid_argument(
+                "trying to calculate `" + name + "()` of empty array"
+            );
+        }
+        const bool is_max = (name == "max");
+        int result = -1;
+        if (args.size() == 1) {
+            if (args[0]->type() == json_lib::json_type::reference_json) {
+                args[0]
+                    = std::dynamic_pointer_cast<json_reference>(args[0])->value(
+                    );
+            }
+            if (args[0]->type() == json_lib::json_type::reference_json) {
+                return shared_from_this();
+            }
+            if (args[0]->type() == json_lib::json_type::array_json) {
+                const auto arr
+                    = std::dynamic_pointer_cast<json_lib::json_array>(args[0]);
+                const int sz = static_cast<int>(arr->size());
+                if (sz == 0) {
+                    throw std::invalid_argument(
+                        "trying to calculate `" + name + "()` of empty array"
+                    );
+                }
+                for (int i = 0; i < sz; ++i) {
+                    auto item = arr->at(i);
+                    if (item->type() == json_lib::json_type::reference_json) {
+                        item = std::dynamic_pointer_cast<json_reference>(item)
+                                   ->value();
+                    }
+                    if (item->type() == json_lib::json_type::reference_json) {
+                        return shared_from_this();
+                    }
+                    if (item->type() != json_lib::json_type::integer_json) {
+                        throw std::invalid_argument(
+                            "trying to calculate `" + name
+                            + "()` of not integer"
+                        );
+                    }
+                    const int val
+                        = std::dynamic_pointer_cast<json_lib::json_integer>(item
+                        )
+                              ->as_index();
+                    if (i == 0 || (is_max && val > result)
+                        || (!is_max && val < result)) {
+                        result = val;
+                    }
+                }
+            }
+        } else {
+            for (size_t i = 0; i < args.size(); ++i) {
+                auto item = args[i];
+                if (item->type() == json_lib::json_type::reference_json) {
+                    item = std::dynamic_pointer_cast<json_reference>(item)
+                               ->value();
+                }
+                if (item->type() == json_lib::json_type::reference_json) {
+                    return shared_from_this();
+                }
+                if (item->type() != json_lib::json_type::integer_json) {
+                    throw std::invalid_argument(
+                        "trying to calculate `" + name + "()` of not integer"
+                    );
+                }
+                const int val
+                    = std::dynamic_pointer_cast<json_lib::json_integer>(item)
+                          ->as_index();
+                if (i == 0 || (is_max && val > result)
+                    || (!is_max && val < result)) {
+                    result = val;
+                }
+            }
+        }
+        return std::make_shared<json_lib::json_integer>(result);
+    }
+    return shared_from_this();
 }
 
 void reference_lib::json_reference::set_parent(
@@ -197,7 +313,16 @@ void reference_lib::json_set::set_parent(const std::shared_ptr<json>& local) {
     set_head_type(ref_head_type::set);
 }
 
-void reference_lib::json_function::set_parent(const std::shared_ptr<json>&) { }
+void reference_lib::json_function::set_parent(const std::shared_ptr<json>& local
+) {
+    for (auto& arg : args) {
+        if (arg->type() == json_lib::json_type::reference_json) {
+            const auto ref_arg = std::dynamic_pointer_cast<json_reference>(arg);
+            ref_arg->set_parent(local);
+            arg = ref_arg->value();
+        }
+    }
+}
 
 size_t reference_lib::json_reference::length() const { return tail.size(); }
 
