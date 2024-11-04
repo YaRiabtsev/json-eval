@@ -28,21 +28,23 @@
 
 int main(const int argc, char* argv[]) {
     if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <json-file> <json-path>\n";
+        std::cerr << "Usage: " << argv[0] << " <json-file> \"<expression>\"\n";
         return 1;
     }
 
-    std::shared_ptr<json_lib::json> base_json;
+    std::shared_ptr<json_lib::json> base;
     const std::filesystem::path input_file(argv[1]);
     parser_lib::parser prs(input_file);
-    prs.completely_parse_json(base_json);
+    prs.completely_parse_json(base);
 
-    std::shared_ptr<json_lib::json> raw_json;
+    std::shared_ptr<json_lib::json> result;
     std::string expr = argv[2];
     prs = parser_lib::parser(expr);
-    prs.completely_parse_json(raw_json, true);
+    prs.completely_parse_json(result, true);
 
-    std::cout << raw_json->to_string() << std::endl;
+    result->set_root(base);
+
+    std::cout << result->to_string() << std::endl;
 
     return 0;
 }

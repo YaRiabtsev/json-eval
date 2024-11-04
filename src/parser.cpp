@@ -482,7 +482,9 @@ void parser_lib::parser::parse_json(
                 dynamic, ']', &parser::parse_array_item
             );
         result = std::make_shared<json_lib::json_array>(children);
-        result->touch();
+        if (dynamic) {
+            result->touch();
+        }
     } else if (peek() == '{') {
         next();
         auto children = parse_collection<std::vector<
@@ -490,7 +492,9 @@ void parser_lib::parser::parse_json(
             dynamic, '}', &parser::parse_object_item
         );
         result = std::make_shared<json_lib::json_object>(children);
-        result->touch();
+        if (dynamic) {
+            result->touch();
+        }
     } else if (dynamic && peek() == '(') {
         next();
         parse_json(result, dynamic);

@@ -44,7 +44,7 @@ jobs:
           ctest
           lcov --capture --directory . --output-file coverage.info --rc branch_coverage=1 --ignore-errors gcov,inconsistent,mismatch
           lcov --remove coverage.info '/usr/*' '*/tests/*' --output-file coverage.info --rc branch_coverage=1
-          genhtml coverage.info -t "JSON eval" --demangle-cpp --branch-coverage  --output-directory ../cov
+          genhtml coverage.info -t "JSON Expression Parser" --demangle-cpp --branch-coverage  --output-directory ../cov
 
       - name: Clean build
         run: rm -rf build/

@@ -133,6 +133,24 @@ void reference_lib::json_set::touch() {
     }
 }
 
+void reference_lib::json_reference::set_root(const std::shared_ptr<json>& item
+) {
+    for (const auto& accessor : tail) {
+        accessor->set_root(item);
+    }
+    if (head_type == ref_head_type::root) {
+        head = item;
+        head_type = ref_head_type::object;
+        simplify();
+    }
+}
+
+void reference_lib::json_set::set_root(const std::shared_ptr<json>& item) {
+    for (const auto& element : elements) {
+        element->set_root(item);
+    }
+}
+
 reference_lib::json_reference_type
 reference_lib::json_reference::reference_type() const {
     return _reference_type;
@@ -160,7 +178,7 @@ void reference_lib::json_function::set_args(
     this->args = args;
 }
 
-void reference_lib::json_reference::set_local_head(
+void reference_lib::json_reference::set_parent(
     const std::shared_ptr<json>& local
 ) {
     if (head_type == ref_head_type::local
@@ -172,16 +190,14 @@ void reference_lib::json_reference::set_local_head(
     }
 }
 
-void reference_lib::json_set::set_local_head(const std::shared_ptr<json>& local
-) {
+void reference_lib::json_set::set_parent(const std::shared_ptr<json>& local) {
     for (const auto& element : elements) {
-        element->set_local_head(local);
+        element->set_parent(local);
     }
     set_head_type(ref_head_type::set);
 }
 
-void reference_lib::json_function::set_local_head(const std::shared_ptr<
-                                                  json>&) { }
+void reference_lib::json_function::set_parent(const std::shared_ptr<json>&) { }
 
 size_t reference_lib::json_reference::length() const { return tail.size(); }
 
@@ -218,13 +234,13 @@ void reference_lib::json_reference::simplify() {
                     if (ref_accessor->get_head_type() == ref_head_type::root) {
                         return;
                     }
-                    ref_accessor->set_local_head(head);
+                    ref_accessor->set_parent(head);
                     tail.front() = ref_accessor->value();
                     break;
                 }
                 case json_reference_type::set_json: {
                     std::dynamic_pointer_cast<json_set>(ref_accessor)
-                        ->set_local_head(head);
+                        ->set_parent(head);
                     head = ref_accessor->value();
                     tail.pop_front();
                     break;

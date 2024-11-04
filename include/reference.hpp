@@ -45,11 +45,12 @@ public:
     indented_string(size_t indent_level, bool pretty) const override;
     std::string tail_to_string() const;
     void touch() override;
+    void set_root(const std::shared_ptr<json>& item) override;
     json_lib::json_type type() const override;
     virtual json_reference_type reference_type() const;
 
     virtual void emplace_back(const std::shared_ptr<json>& accessor);
-    virtual void set_local_head(const std::shared_ptr<json>& local);
+    virtual void set_parent(const std::shared_ptr<json>& local);
 
     virtual size_t length() const;
     virtual std::shared_ptr<json> value();
@@ -75,8 +76,9 @@ public:
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
     void touch() override;
+    void set_root(const std::shared_ptr<json>& item) override;
     void emplace_back(const std::shared_ptr<json>& item) override;
-    void set_local_head(const std::shared_ptr<json>& local) override;
+    void set_parent(const std::shared_ptr<json>& local) override;
 
 private:
     bool independent = false;
@@ -90,7 +92,7 @@ public:
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
 
-    void set_local_head(const std::shared_ptr<json>& local) override;
+    void set_parent(const std::shared_ptr<json>& local) override;
     void set_args(const std::vector<std::shared_ptr<json>>& args);
 
 private:

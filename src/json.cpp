@@ -155,7 +155,7 @@ void json_lib::json_array::touch() {
             const auto ref
                 = std::dynamic_pointer_cast<reference_lib::json_reference>(child
                 );
-            ref->set_local_head(shared_from_this());
+            ref->set_parent(shared_from_this());
             child = ref->value();
         }
         child->touch();
@@ -174,10 +174,48 @@ void json_lib::json_object::touch() {
             const auto ref
                 = std::dynamic_pointer_cast<reference_lib::json_reference>(child
                 );
-            ref->set_local_head(shared_from_this());
+            ref->set_parent(shared_from_this());
             child = ref->value();
         }
         child->touch();
+    }
+    touched = false;
+}
+
+void json_lib::json::set_root(const std::shared_ptr<json>&) { }
+
+void json_lib::json_array::set_root(const std::shared_ptr<json>& item) {
+    if (touched) {
+        looped = true;
+        return;
+    }
+    touched = true;
+    for (auto& child : list) {
+        child->set_root(item);
+        if (child->type() == json_type::reference_json) {
+            const auto ref
+                = std::dynamic_pointer_cast<reference_lib::json_reference>(child
+                );
+            child = ref->value();
+        }
+    }
+    touched = false;
+}
+
+void json_lib::json_object::set_root(const std::shared_ptr<json>& item) {
+    if (touched) {
+        looped = true;
+        return;
+    }
+    touched = true;
+    for (auto& child : data | std::views::values) {
+        child->set_root(item);
+        if (child->type() == json_type::reference_json) {
+            const auto ref
+                = std::dynamic_pointer_cast<reference_lib::json_reference>(child
+                );
+            child = ref->value();
+        }
     }
     touched = false;
 }
