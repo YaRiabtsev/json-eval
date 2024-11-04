@@ -91,9 +91,10 @@ public:
 
     std::string
     indented_string(size_t indent_level, bool pretty) const override;
-
+    void set_root(const std::shared_ptr<json>& item) override;
     void set_parent(const std::shared_ptr<json>& local) override;
     void set_args(const std::vector<std::shared_ptr<json>>& args);
+    std::shared_ptr<json> value() override;
 
 private:
     std::string name;

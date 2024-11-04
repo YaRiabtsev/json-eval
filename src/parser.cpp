@@ -349,6 +349,7 @@ bool parser_lib::parser::parse_accessor(
         }
         const std::string keyword = parse_keyword();
         if (valid() && peek() == '(') {
+            throw throw_message("suffix-functions not yet supported");
             next();
             const auto function
                 = std::make_shared<reference_lib::json_function>(keyword);
